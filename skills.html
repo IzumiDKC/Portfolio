@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark" data-lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-vi="Kỹ Năng – Điền Nguyễn (Iyu)" data-en="Skills – Dien Nguyen (Iyu)">Kỹ Năng – Điền Nguyễn (Iyu)</title>
+  <script>(function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav id="navbar" class="scrolled">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">iyu<span class="logo-dot">.</span></a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="about.html" class="nav-link" data-vi="Về tôi" data-en="About">Về tôi</a></li>
+        <li><a href="experience.html" class="nav-link" data-vi="Kinh nghiệm" data-en="Experience">Kinh nghiệm</a></li>
+        <li><a href="skills.html" class="nav-link active" data-vi="Kỹ năng" data-en="Skills">Kỹ năng</a></li>
+        <li><a href="contact.html" class="nav-link" data-vi="Liên hệ" data-en="Contact">Liên hệ</a></li>
+      </ul>
+      <div class="nav-controls">
+        <button id="langToggle" class="nav-ctrl-btn" title="Switch language">EN</button>
+        <button id="themeToggle" class="nav-ctrl-btn" title="Toggle theme"><i class="fa-solid fa-sun"></i></button>
+        <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    <section class="section page-section-first">
+      <div class="container">
+        <div class="section-header" data-aos="fade-up">
+          <span class="section-tag" data-vi="01 / Kỹ Năng" data-en="01 / Skills">01 / Kỹ Năng</span>
+          <h1 class="section-title">
+            <span data-vi="Bộ công cụ " data-en="Technical ">Bộ công cụ </span><span class="gradient-text" data-vi="kỹ thuật" data-en="toolkit">kỹ thuật</span>
+          </h1>
+        </div>
+
+        <div class="skills-grid">
+          <div class="skill-group glass-card" data-aos="fade-up">
+            <h3 class="skill-group-title"><i class="fa-solid fa-server"></i> <span data-vi="Backend" data-en="Backend">Backend</span></h3>
+            <div class="skill-pills">
+              <span class="skill-pill">C# / .NET</span>
+              <span class="skill-pill">ASP.NET Core</span>
+              <span class="skill-pill">Node.js</span>
+              <span class="skill-pill">RESTful API</span>
+              <span class="skill-pill">SignalR</span>
+              <span class="skill-pill">Entity Framework</span>
+            </div>
+          </div>
+          <div class="skill-group glass-card" data-aos="fade-up" data-aos-delay="100">
+            <h3 class="skill-group-title"><i class="fa-solid fa-paintbrush"></i> <span data-vi="Frontend" data-en="Frontend">Frontend</span></h3>
+            <div class="skill-pills">
+              <span class="skill-pill">React</span>
+              <span class="skill-pill">HTML5 / CSS3</span>
+              <span class="skill-pill">JavaScript</span>
+              <span class="skill-pill">Bootstrap</span>
+              <span class="skill-pill">Razor Pages</span>
+              <span class="skill-pill">Tailwind CSS</span>
+            </div>
+          </div>
+          <div class="skill-group glass-card" data-aos="fade-up" data-aos-delay="200">
+            <h3 class="skill-group-title"><i class="fa-solid fa-database"></i> <span data-vi="Cơ sở dữ liệu" data-en="Database">Cơ sở dữ liệu</span></h3>
+            <div class="skill-pills">
+              <span class="skill-pill">SQL Server</span>
+              <span class="skill-pill">MySQL</span>
+              <span class="skill-pill">MongoDB</span>
+              <span class="skill-pill">Redis</span>
+            </div>
+          </div>
+          <div class="skill-group glass-card" data-aos="fade-up" data-aos-delay="300">
+            <h3 class="skill-group-title"><i class="fa-solid fa-wrench"></i> <span data-vi="Công cụ &amp; DevOps" data-en="Tools &amp; DevOps">Công cụ &amp; DevOps</span></h3>
+            <div class="skill-pills">
+              <span class="skill-pill">Git / GitHub</span>
+              <span class="skill-pill">Docker</span>
+              <span class="skill-pill">Linux</span>
+              <span class="skill-pill">Postman</span>
+              <span class="skill-pill">Azure</span>
+              <span class="skill-pill">Jira</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Soft Skills -->
+        <div class="soft-skills-section" data-aos="fade-up">
+          <h2 class="section-title" style="text-align:center;margin-bottom:32px;font-size:1.5rem;">
+            <span data-vi="Kỹ năng " data-en="Soft ">Kỹ năng </span><span class="gradient-text" data-vi="mềm" data-en="skills">mềm</span>
+          </h2>
+          <div class="soft-skills-grid">
+            <div class="soft-skill-item glass-card">
+              <i class="fa-solid fa-comments"></i>
+              <span data-vi="Giao tiếp" data-en="Communication">Giao tiếp</span>
+            </div>
+            <div class="soft-skill-item glass-card">
+              <i class="fa-solid fa-people-group"></i>
+              <span data-vi="Làm việc nhóm" data-en="Teamwork">Làm việc nhóm</span>
+            </div>
+            <div class="soft-skill-item glass-card">
+              <i class="fa-solid fa-lightbulb"></i>
+              <span data-vi="Giải quyết vấn đề" data-en="Problem solving">Giải quyết vấn đề</span>
+            </div>
+            <div class="soft-skill-item glass-card">
+              <i class="fa-solid fa-clock"></i>
+              <span data-vi="Quản lý thời gian" data-en="Time management">Quản lý thời gian</span>
+            </div>
+            <div class="soft-skill-item glass-card">
+              <i class="fa-solid fa-rotate"></i>
+              <span data-vi="Linh hoạt – Agile" data-en="Agile mindset">Linh hoạt – Agile</span>
+            </div>
+            <div class="soft-skill-item glass-card">
+              <i class="fa-solid fa-book-open"></i>
+              <span data-vi="Tự học liên tục" data-en="Continuous learning">Tự học liên tục</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <div class="page-nav-bar">
+      <div class="container">
+        <a href="experience.html" class="page-nav-btn btn-ghost"><i class="fa-solid fa-arrow-left"></i> <span data-vi="Kinh nghiệm" data-en="Experience">Kinh nghiệm</span></a>
+        <a href="contact.html" class="page-nav-btn btn-primary"><span data-vi="Liên hệ" data-en="Contact">Liên hệ</span> <i class="fa-solid fa-arrow-right"></i></a>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <p>© 2025 <strong>Điền Nguyễn (Iyu)</strong>. <span data-vi="Được xây dựng với" data-en="Built with">Được xây dựng với</span> <i class="fa-solid fa-heart" style="color:#6366f1;"></i></p>
+    </div>
+  </footer>
+  <script src="lang.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
