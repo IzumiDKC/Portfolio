@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark" data-lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-vi="Trò Chơi Bám Sát – Điền Nguyễn (Iyu)" data-en="Catch the Number – Dien Nguyen (Iyu)">Trò Chơi Bám Sát – Điền Nguyễn (Iyu)</title>
+  <meta name="description" content="Trò chơi tìm số ngẫu nhiên." />
+  <script>(function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* CSS Nâng Cao cho Game */
+    .game-section {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 100px 20px 60px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg-color);
+    }
+    
+    /* Hiệu ứng nền dịu mắt */
+    .game-section::before {
+      content: '';
+      position: absolute;
+      top: 10%;
+      left: 15%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.15), transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(50px);
+    }
+    .game-section::after {
+      content: '';
+      position: absolute;
+      bottom: 10%;
+      right: 15%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(236, 72, 153, 0.1), transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(60px);
+    }
+
+    [data-theme="light"] .game-section::before {
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.25), transparent 70%);
+    }
+    [data-theme="light"] .game-section::after {
+      background: radial-gradient(circle, rgba(236, 72, 153, 0.2), transparent 70%);
+    }
+
+    .game-card {
+      background: rgba(30,30,35,0.4);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 1.5rem;
+      padding: 3rem;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      position: relative;
+      z-index: 10;
+      transition: transform 0.3s ease;
+    }
+    
+    [data-theme="light"] .game-card {
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(255, 255, 255, 1);
+      box-shadow: 0 25px 50px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,1);
+    }
+
+    .game-title {
+      font-size: 2.2rem;
+      margin-bottom: 2rem;
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.8rem;
+    }
+    .game-title i {
+      color: var(--primary-color);
+      filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
+    }
+    .game-title span {
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    
+    .game-setup, .game-play, .game-over { 
+      display: none; 
+      opacity: 0;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      transform: translateY(15px);
+    }
+    .game-setup.active, .game-play.active, .game-over.active {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .game-input {
+      width: 100%;
+      padding: 1rem 1.2rem;
+      font-size: 1.25rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(0,0,0,0.2);
+      color: var(--text-color);
+      margin-bottom: 1.2rem;
+      text-align: center;
+      font-family: inherit;
+      transition: all 0.3s ease;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .game-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      background: rgba(0,0,0,0.3);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2), inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    [data-theme="light"] .game-input {
+      background: rgba(255,255,255,0.8);
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+    [data-theme="light"] .game-input:focus {
+      background: #ffffff;
+    }
+
+    .game-btn {
+      width: 100%;
+      padding: 1rem;
+      border-radius: 0.75rem;
+      font-weight: 700;
+      font-size: 1.1rem;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--primary-color), #4f46e5);
+      border: none;
+      color: white;
+      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .game-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(99, 102, 241, 0.4);
+    }
+    .game-btn:active {
+      transform: translateY(0);
+    }
+    
+    .range-display {
+      font-size: 4.5rem;
+      font-weight: 900;
+      margin: 2.5rem 0;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-color);
+      letter-spacing: -2px;
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .range-display .dash {
+      color: var(--text-secondary);
+      font-size: 3rem;
+      font-weight: 400;
+    }
+
+    .range-display.pop {
+      transform: scale(1.15);
+      filter: drop-shadow(0 0 15px rgba(99, 102, 241, 0.4));
+    }
+    
+    .turn-indicator {
+      display: inline-block;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--bg-color);
+      background: var(--text-color);
+      padding: 0.4rem 1.2rem;
+      border-radius: 20px;
+      margin-bottom: 0.5rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    
+    [data-theme="dark"] .turn-indicator {
+      background: var(--text-color);
+      color: var(--bg-color);
+    }
+    
+    .history-log {
+      max-height: 180px;
+      overflow-y: auto;
+      text-align: left;
+      margin-top: 1.5rem;
+      padding: 1.2rem;
+      background: rgba(0,0,0,0.15);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 0.75rem;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+      scrollbar-width: thin;
+      scrollbar-color: var(--primary-color) transparent;
+    }
+    
+    [data-theme="light"] .history-log {
+      background: rgba(255,255,255,0.5);
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .history-log::-webkit-scrollbar {
+      width: 6px;
+    }
+    .history-log::-webkit-scrollbar-thumb {
+      background-color: var(--primary-color);
+      border-radius: 10px;
+    }
+    
+    .history-log p { 
+      margin-bottom: 0.6rem; 
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      line-height: 1.4;
+    }
+    [data-theme="light"] .history-log p {
+      border-bottom-color: rgba(0,0,0,0.05);
+    }
+    .history-log p:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    .history-log p::before {
+      content: '>';
+      color: var(--primary-color);
+      margin-right: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: bold;
+    }
+    
+    .setup-group {
+      margin-bottom: 1.8rem;
+      text-align: left;
+    }
+    .setup-group label {
+      display: block;
+      margin-bottom: 0.6rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+  <nav id="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">iyu<span class="logo-dot">.</span></a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="about.html" class="nav-link" data-vi="Về tôi" data-en="About">Về tôi</a></li>
+        <li><a href="experience.html" class="nav-link" data-vi="Kinh nghiệm" data-en="Experience">Kinh nghiệm</a></li>
+        <li><a href="skills.html" class="nav-link" data-vi="Kỹ năng" data-en="Skills">Kỹ năng</a></li>
+        <li><a href="contact.html" class="nav-link" data-vi="Liên hệ" data-en="Contact">Liên hệ</a></li>
+      </ul>
+      <div class="nav-controls">
+        <button id="langToggle" class="nav-ctrl-btn" title="Switch language">EN</button>
+        <button id="themeToggle" class="nav-ctrl-btn" title="Toggle theme"><i class="fa-solid fa-sun"></i></button>
+        <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </nav>
+
+  <section class="game-section">
+    <div class="game-card">
+      <h2 class="game-title"><i class="fa-solid fa-gamepad"></i> <span data-vi="Tìm Số Bí Ẩn" data-en="Secret Number">Tìm Số Bí Ẩn</span></h2>
+      
+      <!-- Setup Screen -->
+      <div class="game-setup active" id="setupScreen">
+        <p style="margin-bottom: 2rem; color: var(--text-secondary); line-height: 1.6;" data-vi="Hệ thống sẽ chọn 1 số ngẫu nhiên từ 0-1000. Bạn (hoặc các người chơi) lần lượt đoán số để thu hẹp khoảng cách cho đến khi tìm ra đáp án!" data-en="System picks a random number from 0-1000. Players take turns guessing to narrow the range until someone finds it!">
+          Hệ thống sẽ chọn 1 số ngẫu nhiên từ 0-1000. Bạn (hoặc các người chơi) lần lượt đoán số để thu hẹp khoảng cách cho đến khi tìm ra đáp án!
+        </p>
+        
+        <div class="setup-group">
+          <label data-vi="Chế độ chơi" data-en="Game Mode">Chế độ chơi</label>
+          <select id="gameMode" class="game-input" style="cursor:pointer;">
+            <option value="bot" data-vi="Chơi với Máy" data-en="Play vs Bot">Chơi với Máy</option>
+            <option value="multi" data-vi="Nhiều người chơi (Chung máy)" data-en="Local Multiplayer">Nhiều người chơi (Chung máy)</option>
+          </select>
+        </div>
+        
+        <div class="setup-group" id="playerCountGroup" style="display:none;">
+          <label data-vi="Số lượng người chơi" data-en="Number of players">Số lượng người chơi</label>
+          <input type="number" id="playerCount" class="game-input" min="2" max="10" value="2">
+        </div>
+        
+        <button class="game-btn" id="btnStart">
+          <span data-vi="Bắt đầu chơi" data-en="Start Game">Bắt đầu chơi</span>
+        </button>
+      </div>
+
+      <!-- Play Screen -->
+      <div class="game-play" id="playScreen">
+        <div class="turn-indicator" id="turnIndicator" data-vi="Lượt của: Bạn" data-en="Turn: You">Lượt của: Bạn</div>
+        
+        <div class="range-display" id="rangeDisplay">
+          <span id="minVal">0</span> <span class="dash">-</span> <span id="maxVal">1000</span>
+        </div>
+        
+        <div>
+          <input type="number" id="guessInput" class="game-input" placeholder="Nhập số dự đoán..." autocomplete="off">
+          <button class="game-btn" id="btnGuess">
+            <span data-vi="Đoán" data-en="Guess">Đoán</span>
+          </button>
+        </div>
+        
+        <div class="history-log" id="historyLog">
+          <!-- Logs appear here dynamically -->
+        </div>
+      </div>
+
+      <!-- Game Over Screen -->
+      <div class="game-over" id="gameOverScreen">
+        <h3 style="font-size: 2rem; margin-bottom: 1.5rem; color: var(--text-color);" id="winnerMessage" data-vi="" data-en="">Chiến thắng!</h3>
+        <p style="font-size: 1.2rem; margin-bottom: 2.5rem; color: var(--text-secondary);">
+          <span data-vi="Số bí mật là:" data-en="The secret number was:">Số bí mật là:</span> 
+          <strong id="secretNumberDisplay" class="range-display pop" style="display:block; font-size: 3.5rem; margin-top: 1rem; color: var(--primary-color);">500</strong>
+        </p>
+        
+        <button class="game-btn" id="btnRestart">
+          <span data-vi="Chơi lại" data-en="Play Again">Chơi lại</span>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <script src="lang.js"></script>
+  <script src="script.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
