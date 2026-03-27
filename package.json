@@ -1,0 +1,10 @@
+{
+  "name": "portfolio-root",
+  "version": "1.0.0",
+  "description": "Proxy for Render Deployment",
+  "private": true,
+  "scripts": {
+    "postinstall": "cd server && npm install",
+    "start": "node server/server.js"
+  }
+}
