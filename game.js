@@ -61,11 +61,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTurnName = '';
 
     // ═══════════════════════════════════════════
-    //  SERVER URL — thay đổi khi deploy lên Render
+    //  SERVER URL (Tự động nhận diện môi trường)
     // ═══════════════════════════════════════════
-    const SOCKET_URL = 'http://localhost:3001';
-    // Sau khi deploy Render, đổi thành:
-    // const SOCKET_URL = 'https://your-app-name.onrender.com';
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const SOCKET_URL = isLocalhost 
+        ? 'http://localhost:3001' 
+        : 'https://portfolio-3v3i.onrender.com';
+
 
     const langToggleBtn = document.getElementById('langToggle');
 
