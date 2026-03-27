@@ -182,6 +182,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        if ((guess - minRange > 100) && (maxRange - guess > 100)) {
+            const l = getLang();
+            const msg = l === 'en' 
+                ? `Guess must be within 100 units from boundaries! (<= ${minRange + 100} or >= ${maxRange - 100})`
+                : `Chỉ được đoán cách giới hạn hiện tại tối đa 100 đơn vị! (Vd: <= ${minRange + 100} hoặc >= ${maxRange - 100})`;
+            alert(msg);
+            return;
+        }
+        
         if (guess === secretAmount) {
             endGame(currentPlayer, guess);
             return;
@@ -228,7 +237,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let botGuess = Math.floor(Math.random() * (maxBound - minBound - 1)) + minBound + 1;
+        let botGuess;
+        if (maxBound - minBound <= 200) {
+            botGuess = Math.floor(Math.random() * (maxBound - minBound - 1)) + minBound + 1;
+        } else {
+            let isLeft = Math.random() < 0.5;
+            if (isLeft) {
+                botGuess = minBound + 1 + Math.floor(Math.random() * 100);
+            } else {
+                botGuess = maxBound - 1 - Math.floor(Math.random() * 100);
+            }
+        }
         processGuess(botGuess);
     }
 
@@ -627,6 +646,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const msg = l === 'en' 
                 ? `Please enter a number between ${minRange} and ${maxRange} (exclusive)!`
                 : `Vui lòng nhập số trong khoảng ${minRange} - ${maxRange} (không bao gồm 2 đầu)!`;
+            alert(msg);
+            return;
+        }
+        
+        if ((guess - minRange > 100) && (maxRange - guess > 100)) {
+            const l = getLang();
+            const msg = l === 'en' 
+                ? `Guess must be within 100 units from boundaries! (<= ${minRange + 100} or >= ${maxRange - 100})`
+                : `Chỉ được đoán cách giới hạn hiện tại tối đa 100 đơn vị! (Vd: <= ${minRange + 100} hoặc >= ${maxRange - 100})`;
             alert(msg);
             return;
         }
