@@ -1,5 +1,3 @@
 {
-  "outputDirectory": ".",
-  "rewrites": [],
-  "ignoreCommand": "exit 0"
+  "outputDirectory": "."
 }
