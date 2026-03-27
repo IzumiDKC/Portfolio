@@ -1,2 +1,4 @@
 # .gitignore — Portfolio
 avatar_ai.png
+node_modules/
+server/node_modules/

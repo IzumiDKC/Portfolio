@@ -271,6 +271,153 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
+
+    /* Online Lobby Styles */
+    .game-lobby { display: none; opacity: 0; transition: opacity 0.4s ease, transform 0.4s ease; transform: translateY(15px); }
+    .game-lobby.active { display: block; opacity: 1; transform: translateY(0); }
+
+    .room-code-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2.8rem;
+      font-weight: 900;
+      letter-spacing: 8px;
+      color: var(--primary-color);
+      background: rgba(99, 102, 241, 0.1);
+      border: 2px dashed rgba(99, 102, 241, 0.3);
+      border-radius: 1rem;
+      padding: 1rem 1.5rem;
+      margin: 1.5rem 0;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .room-code-display:hover {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.5);
+    }
+    .room-code-display .copy-hint {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 400;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+    }
+
+    .lobby-players {
+      list-style: none;
+      padding: 0;
+      margin: 1.2rem 0;
+    }
+    .lobby-players li {
+      padding: 0.7rem 1rem;
+      margin-bottom: 0.5rem;
+      border-radius: 0.5rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: var(--text-color);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    [data-theme="light"] .lobby-players li {
+      background: rgba(0,0,0,0.03);
+      border-color: rgba(0,0,0,0.06);
+    }
+    .lobby-players li .host-badge {
+      font-size: 0.7rem;
+      background: var(--primary-color);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: auto;
+    }
+    .lobby-players li i {
+      color: var(--primary-color);
+    }
+
+    .online-name-input {
+      margin-bottom: 1rem;
+    }
+    .lobby-actions {
+      display: flex;
+      gap: 0.8rem;
+      margin-bottom: 1.5rem;
+    }
+    .lobby-actions .game-btn {
+      flex: 1;
+    }
+    .game-btn.secondary {
+      background: transparent;
+      border: 2px solid var(--primary-color);
+      color: var(--primary-color);
+      box-shadow: none;
+    }
+    .game-btn.secondary:hover {
+      background: rgba(99, 102, 241, 0.1);
+      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.15);
+    }
+    .game-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .room-code-badge {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--primary-color);
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 8px;
+      padding: 0.3rem 0.8rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .join-room-group { display: none; margin-top: 1rem; }
+    .join-room-group.active { display: block; }
+
+    .status-message {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin: 0.8rem 0;
+      min-height: 1.2em;
+    }
+    .status-message.error { color: #ef4444; }
+    .status-message.success { color: #22c55e; }
+
+    .connecting-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(5px);
+      z-index: 100;
+      border-radius: 1.5rem;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 1rem;
+      color: var(--text-color);
+    }
+    .connecting-overlay.active {
+      display: flex;
+    }
+    .connecting-overlay .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255,255,255,0.1);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -306,6 +453,7 @@
           <select id="gameMode" class="game-input" style="cursor:pointer;">
             <option value="bot" data-vi="Chơi với Máy" data-en="Play vs Bot">Chơi với Máy</option>
             <option value="multi" data-vi="Nhiều người chơi (Chung máy)" data-en="Local Multiplayer">Nhiều người chơi (Chung máy)</option>
+            <option value="online" data-vi="🌐 Online Multiplayer" data-en="🌐 Online Multiplayer">🌐 Online Multiplayer</option>
           </select>
         </div>
         
@@ -319,8 +467,64 @@
         </button>
       </div>
 
+      <!-- Online Lobby Screen -->
+      <div class="game-lobby" id="lobbyScreen">
+        <!-- Step 1: Enter name -->
+        <div id="lobbyNameStep">
+          <div class="setup-group">
+            <label data-vi="Tên người chơi" data-en="Your Name">Tên người chơi</label>
+            <input type="text" id="onlineName" class="game-input online-name-input" placeholder="Nhập tên..." maxlength="20" autocomplete="off">
+          </div>
+          <div class="lobby-actions">
+            <button class="game-btn" id="btnCreateRoom">
+              <i class="fa-solid fa-plus"></i> <span data-vi="Tạo Phòng" data-en="Create Room">Tạo Phòng</span>
+            </button>
+            <button class="game-btn secondary" id="btnShowJoin">
+              <i class="fa-solid fa-right-to-bracket"></i> <span data-vi="Tham Gia" data-en="Join Room">Tham Gia</span>
+            </button>
+          </div>
+          <div class="join-room-group" id="joinRoomGroup">
+            <div class="setup-group">
+              <label data-vi="Mã phòng" data-en="Room Code">Mã phòng</label>
+              <input type="text" id="roomCodeInput" class="game-input" placeholder="VD: ABC123" maxlength="6" autocomplete="off" style="text-transform:uppercase; letter-spacing:3px; font-family:'JetBrains Mono',monospace;">
+            </div>
+            <button class="game-btn" id="btnJoinRoom">
+              <span data-vi="Vào Phòng" data-en="Join">Vào Phòng</span>
+            </button>
+          </div>
+          <p class="status-message" id="lobbyStatus"></p>
+          <button class="game-btn secondary" id="btnBackToSetup" style="margin-top:1rem;">
+            <i class="fa-solid fa-arrow-left"></i> <span data-vi="Quay lại" data-en="Back">Quay lại</span>
+          </button>
+        </div>
+
+        <!-- Step 2: Waiting room -->
+        <div id="lobbyWaitStep" style="display:none;">
+          <div class="room-code-display" id="roomCodeDisplay" title="Click to copy">
+            <span id="roomCodeText">------</span>
+            <span class="copy-hint" data-vi="Nhấn để sao chép mã phòng" data-en="Click to copy room code">Nhấn để sao chép mã phòng</span>
+          </div>
+          <label style="display:block; margin-bottom:0.5rem; font-weight:600; color:var(--text-secondary); font-size:0.9rem; text-transform:uppercase; letter-spacing:0.5px;" data-vi="Người chơi trong phòng" data-en="Players in Room">Người chơi trong phòng</label>
+          <ul class="lobby-players" id="lobbyPlayerList"></ul>
+          <button class="game-btn" id="btnStartOnline" disabled>
+            <i class="fa-solid fa-play"></i> <span data-vi="Bắt đầu" data-en="Start Game">Bắt đầu</span>
+          </button>
+          <p class="status-message" id="lobbyWaitStatus" data-vi="Chờ thêm người chơi..." data-en="Waiting for players...">Chờ thêm người chơi...</p>
+          <button class="game-btn secondary" id="btnLeaveLobby" style="margin-top:0.8rem;">
+            <i class="fa-solid fa-right-from-bracket"></i> <span data-vi="Rời phòng" data-en="Leave Room">Rời phòng</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Connecting Overlay -->
+      <div class="connecting-overlay" id="connectingOverlay">
+        <div class="spinner"></div>
+        <span data-vi="Đang kết nối..." data-en="Connecting...">Đang kết nối...</span>
+      </div>
+
       <!-- Play Screen -->
       <div class="game-play" id="playScreen">
+        <div class="room-code-badge" id="roomBadge" style="display:none;"></div>
         <div class="turn-indicator" id="turnIndicator" data-vi="Lượt của: Bạn" data-en="Turn: You">Lượt của: Bạn</div>
         
         <div class="range-display" id="rangeDisplay">
@@ -355,6 +559,7 @@
     </div>
   </section>
 
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
   <script src="lang.js"></script>
   <script src="script.js"></script>
   <script src="game.js"></script>
