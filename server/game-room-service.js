@@ -11,6 +11,12 @@ const {
   resetSecretNumberGame,
   startSecretNumberGame
 } = require('./games/secret-number');
+const {
+  startMemoryGame,
+  handleMemoryFlip,
+  resetMemoryGame,
+  endMemoryBecauseOpponentLeft
+} = require('./games/memory');
 
 const rooms = {};
 
@@ -111,6 +117,10 @@ function registerGameHandlers(io) {
         startCaroGame(room, io, code);
         return;
       }
+      if (room.gameType === 'memory') {
+        startMemoryGame(room, io, code);
+        return;
+      }
 
       startSecretNumberGame(room, io, code);
     });
@@ -127,6 +137,12 @@ function registerGameHandlers(io) {
       handleCaroMove(room, socket, io, code, { row, col });
     });
 
+    socket.on('memory-flip', ({ cardIndex }) => {
+      const code = socket.roomCode;
+      const room = rooms[code];
+      handleMemoryFlip(room, socket, io, code, { cardIndex });
+    });
+
     socket.on('play-again', () => {
       const code = socket.roomCode;
       const room = rooms[code];
@@ -135,6 +151,7 @@ function registerGameHandlers(io) {
 
       resetSecretNumberGame(room);
       resetCaroGame(room);
+      resetMemoryGame(room);
 
       io.to(code).emit('back-to-lobby', {
         players: room.players.map((player) => player.name)
@@ -176,6 +193,8 @@ function registerGameHandlers(io) {
       if (room.started && room.players.length < 2) {
         if (room.gameType === 'caro') {
           endCaroBecauseOpponentLeft(room, io, code);
+        } else if (room.gameType === 'memory') {
+          endMemoryBecauseOpponentLeft(room, io, code);
         } else {
           endSecretNumberBecauseOpponentLeft(room, io, code);
         }
