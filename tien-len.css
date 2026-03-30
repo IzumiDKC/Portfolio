@@ -1,0 +1,205 @@
+/* CSS cho game Tiến Lên Miền Nam */
+.tien-len-play-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  position: relative;
+  min-height: 500px;
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 10px;
+  overflow: hidden;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+}
+
+/* Đối thủ xung quanh */
+.opponents-area {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+  min-height: 80px;
+}
+
+.opponent-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(var(--primary-rgb), 0.1);
+  padding: 10px 15px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--primary-rgb), 0.3);
+  transition: all 0.3s;
+}
+
+.opponent-box.active-turn {
+  border-color: #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+}
+
+.opponent-box.passed {
+  opacity: 0.5;
+  filter: grayscale(1);
+}
+
+.opponent-name {
+  font-weight: bold;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+
+.opponent-cards {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+}
+
+.opponent-cards i {
+  color: #64748b;
+}
+
+/* Khu vực trung tâm (Bàn) */
+.table-area {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,0.05);
+  border-radius: 8px;
+  margin: 10px 0 20px 0;
+  min-height: 150px;
+  position: relative;
+}
+
+/* Khu vực hiển thị lá bài vừa đánh ra */
+.played-cards-container {
+  display: flex;
+  gap: -20px; /* Chồng lên nhau một chút */
+  justify-content: center;
+}
+
+.played-cards-container .tl-card {
+  margin-left: -25px;
+  box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+}
+
+.played-cards-container .tl-card:first-child {
+  margin-left: 0;
+}
+
+/* Khu vực hiển thị thông báo Pass (Bỏ lượt) ở giữa bàn */
+.table-message {
+  position: absolute;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #ef4444;
+  opacity: 0;
+  pointer-events: none;
+  animation: fadeOutUp 1.5s forwards;
+}
+
+@keyframes fadeOutUp {
+  0% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-10px); }
+  100% { opacity: 0; transform: translateY(-30px); }
+}
+
+/* Lá bài (Hand + Table) */
+.tl-card {
+  width: 60px;
+  height: 90px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.2s, top 0.2s;
+  position: relative;
+  background-color: #fff;
+}
+
+.tl-card[data-suit="0"], .tl-card[data-suit="1"] { /* Bích, Chuồn */
+  color: #0f172a;
+}
+
+.tl-card[data-suit="2"], .tl-card[data-suit="3"] { /* Rô, Cơ */
+  color: #dc2626;
+}
+
+.tl-card-top {
+  align-self: flex-start;
+  line-height: 1;
+  font-size: 1rem;
+}
+
+.tl-card-center {
+  align-self: center;
+  font-size: 1.5rem;
+}
+
+.tl-card-bottom {
+  align-self: flex-end;
+  line-height: 1;
+  font-size: 1rem;
+  transform: rotate(180deg);
+}
+
+/* Bài trên tay */
+.my-hand-area {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  padding: 10px;
+  background: rgba(var(--primary-rgb), 0.05);
+  border-radius: 8px;
+  min-height: 110px;
+}
+
+.my-hand-area .tl-card {
+  margin-left: -35px;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.my-hand-area .tl-card:first-child {
+  margin-left: 0;
+}
+
+.my-hand-area .tl-card:hover {
+  transform: translateY(-10px);
+  z-index: 10;
+}
+
+.my-hand-area .tl-card.selected {
+  transform: translateY(-20px);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.5);
+  z-index: 20;
+}
+
+/* Bảng điều khiển (Action bar) */
+.action-bar {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+/* Responsive cho layout nhỏ */
+@media (max-width: 600px) {
+  .tl-card {
+    width: 45px;
+    height: 65px;
+    font-size: 0.8rem;
+  }
+  .tl-card-center { font-size: 1.2rem; }
+  .my-hand-area .tl-card { margin-left: -25px; }
+}

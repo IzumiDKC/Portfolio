@@ -17,6 +17,13 @@ const {
   resetMemoryGame,
   endMemoryBecauseOpponentLeft
 } = require('./games/memory');
+const {
+  startTienLenGame,
+  handleTienLenMove,
+  handleTienLenPass,
+  endTienLenBecauseOpponentLeft,
+  resetTienLenGame
+} = require('./games/tien-len');
 
 const rooms = {};
 
@@ -121,6 +128,10 @@ function registerGameHandlers(io) {
         startMemoryGame(room, io, code);
         return;
       }
+      if (room.gameType === 'tien-len') {
+        startTienLenGame(room, io, code);
+        return;
+      }
 
       startSecretNumberGame(room, io, code);
     });
@@ -143,6 +154,18 @@ function registerGameHandlers(io) {
       handleMemoryFlip(room, socket, io, code, { cardIndex });
     });
 
+    socket.on('tien-len-move', ({ cards }) => {
+      const code = socket.roomCode;
+      const room = rooms[code];
+      handleTienLenMove(room, socket, io, code, { cards });
+    });
+
+    socket.on('tien-len-pass', () => {
+      const code = socket.roomCode;
+      const room = rooms[code];
+      handleTienLenPass(room, socket, io, code);
+    });
+
     socket.on('play-again', () => {
       const code = socket.roomCode;
       const room = rooms[code];
@@ -152,6 +175,7 @@ function registerGameHandlers(io) {
       resetSecretNumberGame(room);
       resetCaroGame(room);
       resetMemoryGame(room);
+      resetTienLenGame(room);
 
       io.to(code).emit('back-to-lobby', {
         players: room.players.map((player) => player.name)
@@ -195,6 +219,8 @@ function registerGameHandlers(io) {
           endCaroBecauseOpponentLeft(room, io, code);
         } else if (room.gameType === 'memory') {
           endMemoryBecauseOpponentLeft(room, io, code);
+        } else if (room.gameType === 'tien-len') {
+          endTienLenBecauseOpponentLeft(room, io, code);
         } else {
           endSecretNumberBecauseOpponentLeft(room, io, code);
         }
