@@ -1,7 +1,7 @@
 // tien-len.js
 const socketUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
     ? 'http://localhost:3001' 
-    : 'https://portfolio-backend-rt1l.onrender.com';
+    : 'https://portfolio-3v3i.onrender.com';
 
 const socket = io(socketUrl);
 

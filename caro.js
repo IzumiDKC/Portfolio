@@ -166,15 +166,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             socket = io(SOCKET_URL, {
                 transports: ['websocket', 'polling'],
-                timeout: 15000,
+                timeout: 50000,
                 reconnection: true,
-                reconnectionAttempts: 3
+                reconnectionAttempts: 5
             });
 
             const timeout = setTimeout(() => {
                 connectingOverlay.classList.remove('active');
                 reject(new Error('Connection timeout'));
-            }, 15000);
+            }, 50000);
 
             socket.on('connect', () => {
                 clearTimeout(timeout);
