@@ -50,6 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let totalPlayers = 2;
     let currentPlayer = 1;
     let isGameOver = false;
+    let afkTimer = null;
+    let offlinePenalties = {};
 
     // ── Online state ────────────────────────────
     let socket = null;
@@ -80,6 +82,40 @@ document.addEventListener('DOMContentLoaded', () => {
     function showScreen(screen) {
         [setupScreen, playScreen, gameOverScreen, lobbyScreen].forEach(s => s.classList.remove('active'));
         screen.classList.add('active');
+    }
+
+    // ── AFK Timer ───────────────────────────────
+    function startAFKTimer() {
+        clearTimeout(afkTimer);
+        if (isGameOver) return;
+        
+        let shouldStart = false;
+        if (mode === 'multi' || (mode === 'bot' && currentPlayer === 1)) {
+            shouldStart = true;
+        } else if (mode === 'online') {
+            shouldStart = (currentTurnName === myPlayerName);
+        }
+
+        if (shouldStart) {
+            afkTimer = setTimeout(() => {
+                let mn = minRange;
+                let mx = maxRange;
+                let autoGuess;
+                if (mx - mn <= 200) {
+                    autoGuess = Math.floor(Math.random() * (mx - mn - 1)) + mn + 1;
+                } else {
+                    let isLeft = Math.random() < 0.5;
+                    autoGuess = isLeft ? (mn + 1 + Math.floor(Math.random() * 100)) : (mx - 1 - Math.floor(Math.random() * 100));
+                }
+                
+                if (mode === 'online') {
+                    if (socket) socket.emit('guess', { number: autoGuess, isAFK: true });
+                } else {
+                    offlinePenalties[currentPlayer] = (offlinePenalties[currentPlayer] || 0) + 1;
+                    processGuess(autoGuess, true);
+                }
+            }, 10000);
+        }
     }
 
     // ═══════════════════════════════════════════
@@ -165,10 +201,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if(window._iyu && typeof window._iyu.getLang === 'function'){
             triggerLangUpdate(window._iyu.getLang());
         }
+        
+        startAFKTimer();
     }
 
-    function processGuess(botGuessVal = null) {
+    function processGuess(botGuessVal = null, isAFK = false) {
         if (isGameOver) return;
+        clearTimeout(afkTimer);
 
         let guessStr = guessInput.value.trim();
         let guess = botGuessVal !== null ? botGuessVal : parseInt(guessStr);
@@ -203,13 +242,20 @@ document.addEventListener('DOMContentLoaded', () => {
             maxRange = guess;
         }
         
-        addLog(currentPlayer, guess, isUp);
+        addLog(currentPlayer, guess, isUp, isAFK);
         updateRangeUI();
         guessInput.value = '';
         
-        currentPlayer++;
-        if (currentPlayer > totalPlayers) {
-            currentPlayer = 1;
+        while (true) {
+            currentPlayer++;
+            if (currentPlayer > totalPlayers) {
+                currentPlayer = 1;
+            }
+            if (offlinePenalties[currentPlayer] > 0) {
+                offlinePenalties[currentPlayer]--;
+            } else {
+                break;
+            }
         }
         
         updateTurnUI();
@@ -222,6 +268,8 @@ document.addEventListener('DOMContentLoaded', () => {
             guessInput.disabled = false;
             btnGuess.disabled = false;
             guessInput.focus();
+            
+            startAFKTimer();
         }
     }
 
@@ -273,9 +321,17 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const l = getLang();
         turnIndicator.textContent = l === 'en' ? `Turn: ${enStr}` : `Lượt của: ${viStr}`;
+
+        turnIndicator.style.background = mode === 'bot' && currentPlayer===2 ? 'var(--text-color)' : 'var(--primary-color)';
+        turnIndicator.style.color = mode === 'bot' && currentPlayer===2 ? 'var(--bg-color)' : '#ffffff';
+        
+        startAFKTimer();
     }
 
-    function addLog(playerNum, guessVal, isUp, playerNameOverride = null) {
+    function addLog(playerNum, guessVal, isUp, isAFK = false, playerNameOverride = null) {
+        const p = document.createElement('p');
+        const l = getLang();
+
         let pStrVi, pStrEn;
         
         if (playerNameOverride) {
@@ -293,14 +349,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const upEn = 'Increased lower bound.';
         const downEn = 'Decreased upper bound.';
         
-        const viHtml = `${pStrVi} đoán ${gHtml}. ${isUp ? upVi : downVi}`;
-        const enHtml = `${pStrEn} guessed ${gHtml}. ${isUp ? upEn : downEn}`;
+        let actionVi = isAFK ? `quá 10s không nhập, hệ thống tự động chọn ${gHtml} và phạt mất 1 lượt sau đó` : `đoán ${gHtml}`;
+        let actionEn = isAFK ? `was AFK > 10s, system auto-picked ${gHtml}. Penalized 1 turn` : `guessed ${gHtml}`;
+
+        const viHtml = `${pStrVi} ${actionVi}. ${isUp ? upVi : downVi}`;
+        const enHtml = `${pStrEn} ${actionEn}. ${isUp ? upEn : downEn}`;
         
-        const p = document.createElement('p');
         p.setAttribute('data-vi', viHtml);
         p.setAttribute('data-en', enHtml);
         
-        const l = getLang();
         p.innerHTML = l === 'en' ? enHtml : viHtml;
         
         historyLog.insertBefore(p, historyLog.firstChild);
@@ -490,15 +547,17 @@ document.addEventListener('DOMContentLoaded', () => {
             
             showScreen(playScreen);
             if (isMyTurn) guessInput.focus();
+            
+            startAFKTimer();
         });
 
         // ── Guess Result ──────────────────────
-        socket.on('guess-result', ({ playerName, guess, isHigher, minRange: mn, maxRange: mx, currentTurn }) => {
+        socket.on('guess-result', ({ playerName, guess, isHigher, minRange: mn, maxRange: mx, currentTurn, isAFK }) => {
             minRange = mn;
             maxRange = mx;
             currentTurnName = currentTurn;
             
-            addLog(null, guess, isHigher, playerName);
+            addLog(null, guess, isHigher, isAFK, playerName);
             updateRangeUI();
             updateOnlineTurnUI(currentTurn);
             
@@ -619,6 +678,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Visual highlight when it's your turn
         turnIndicator.style.background = isMe ? 'var(--primary-color)' : 'var(--text-color)';
         turnIndicator.style.color = isMe ? '#ffffff' : 'var(--bg-color)';
+        
+        startAFKTimer();
     }
 
     // ── Update lobby player list ────────────────
@@ -637,6 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Send online guess ───────────────────────
     function sendOnlineGuess() {
         if (isGameOver || !socket) return;
+        clearTimeout(afkTimer);
         
         const guessStr = guessInput.value.trim();
         const guess = parseInt(guessStr);

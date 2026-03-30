@@ -1602,3 +1602,101 @@ img { max-width: 100%; display: block; }
     display: flex;
   }
 }
+
+/* ================================================
+   COLLECTION GRID
+   ================================================ */
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.collection-card {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  text-decoration: none;
+  color: #1e293b; /* Dark text for contrast against pastel cards */
+}
+
+/* Ensure text remains dark even in dark theme, since cards are pastel */
+[data-theme="dark"] .collection-card {
+  color: #1e293b;
+}
+[data-theme="light"] .collection-card {
+  color: #1e293b;
+}
+
+.collection-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
+
+.collection-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.collection-content {
+  position: relative;
+  z-index: 2;
+  font-weight: 700;
+}
+
+.collection-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.8;
+  transition: transform 0.3s ease;
+}
+
+.collection-card:hover .collection-icon {
+  transform: scale(1.15) rotate(5deg);
+}
+
+.collection-title {
+  font-size: 1.25rem;
+  margin-bottom: 8px;
+}
+
+.collection-subtitle {
+  font-size: 0.9rem;
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+/* Palette mapping */
+.col-color-1 { background-color: #FFD6DA; }
+.col-color-2 { background-color: #FFC6D0; }
+.col-color-3 { background-color: #E1F7E7; }
+.col-color-4 { background-color: #D1EAF5; }
+.col-color-5 { background-color: #C3D6F2; }
+.col-color-6 { 
+  background-color: #768CCE; 
+  color: #ffffff !important; 
+}
+[data-theme="dark"] .col-color-6, [data-theme="light"] .col-color-6 {
+  color: #ffffff !important;
+}
+
+@media (max-width: 900px) {
+  .collection-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .collection-grid { grid-template-columns: 1fr; }
+  .collection-card { aspect-ratio: auto; min-height: 250px; }
+}

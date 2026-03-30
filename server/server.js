@@ -125,7 +125,7 @@ io.on('connection', (socket) => {
   });
 
   // ── Guess ───────────────────────────────────
-  socket.on('guess', ({ number }) => {
+  socket.on('guess', ({ number, isAFK }) => {
     const code = socket.roomCode;
     const room = rooms[code];
     if (!room || !room.started) return;
@@ -165,9 +165,23 @@ io.on('connection', (socket) => {
       room.maxRange = guess;
     }
 
-    // Advance turn
-    room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
-    const nextPlayer = room.players[room.currentTurnIndex];
+    // Handle AFK Penalty
+    if (isAFK) {
+      if (!room.penalties) room.penalties = {};
+      room.penalties[currentPlayer.id] = (room.penalties[currentPlayer.id] || 0) + 1;
+    }
+
+    // Advance turn (skip penalized players)
+    let nextPlayer;
+    while (true) {
+      room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
+      nextPlayer = room.players[room.currentTurnIndex];
+      if (room.penalties && room.penalties[nextPlayer.id] > 0) {
+        room.penalties[nextPlayer.id]--; // Consume penalty
+      } else {
+        break; // Ready to play
+      }
+    }
 
     const resultPayload = {
       playerName: currentPlayer.name,
@@ -176,7 +190,8 @@ io.on('connection', (socket) => {
       minRange: room.minRange,
       maxRange: room.maxRange,
       currentTurn: nextPlayer.name,
-      currentTurnIndex: room.currentTurnIndex
+      currentTurnIndex: room.currentTurnIndex,
+      isAFK: isAFK || false
     };
 
     io.to(code).emit('guess-result', resultPayload);
