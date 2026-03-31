@@ -137,7 +137,7 @@ export function createTienLenUi({ state, elements, socket }) {
     timerAnimationId = requestAnimationFrame(step);
   }
 
-  function renderEndGameHands(allHands) {
+    function renderEndGameHands(allHands) {
     elements.opponentsArea.innerHTML = '';
     allHands.forEach((player) => {
       if (player.id === state.myId) {
@@ -149,7 +149,7 @@ export function createTienLenUi({ state, elements, socket }) {
       
       let cardsHtml = '';
       if (player.hand.length === 0) {
-        cardsHtml = '<span style="color:var(--primary-color); font-weight:bold;">WINNER</span>';
+        cardsHtml = `<span style="color:var(--primary-color); font-weight:bold;">${player.rankName}</span>`;
       } else {
         cardsHtml = `<div style="display:flex; gap:-20px; align-items:center; justify-content:center; transform: scale(0.6); transform-origin: top center;">
           ${player.hand.map((cardCode, idx) => {
@@ -167,6 +167,7 @@ export function createTienLenUi({ state, elements, socket }) {
         <div class="opponent-cards" style="margin-top: 5px;">
            ${cardsHtml}
         </div>
+        ${player.hand.length > 0 ? `<div style="color:var(--primary-color); font-size: 0.8rem; margin-top: 5px; font-weight:bold;">${player.rankName}</div>` : ''}
       `;
       elements.opponentsArea.appendChild(opponent);
     });
@@ -186,7 +187,7 @@ export function createTienLenUi({ state, elements, socket }) {
       const li = document.createElement('li');
       li.style.padding = '3px 0';
       li.style.borderBottom = '1px dashed rgba(255,255,255,0.1)';
-      li.innerHTML = `<b>Ván ${historyData.length - index}:</b> ${entry.winner} thắng`;
+      li.innerHTML = `<b>Ván ${historyData.length - index}:</b> ${entry.winner}`;
       elements.historyWinnerList.appendChild(li);
     });
   }

@@ -141,9 +141,14 @@ document.addEventListener('DOMContentLoaded', () => {
     alert(message);
   });
 
+  socket.on('tien-len-player-finished', ({ playerName, rank }) => {
+    const rankNames = ['Nhất', 'Nhì', 'Ba', 'Bét'];
+    ui.addLog(`🎖 <b>${playerName}</b> đã hết bài! (${rankNames[rank - 1] || 'Hạng ' + rank})`, '#f59e0b');
+  });
+
   let currentWinner = '';
 
-  socket.on('tien-len-ended', ({ winner, hands, history }) => {
+  socket.on('tien-len-ended', ({ winner, hands, history, winners }) => {
     currentWinner = winner;
     
     // Ngưng đếm giờ
