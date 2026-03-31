@@ -1,6 +1,7 @@
 name: Deploy Node.js Server to AZVPS
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main 
