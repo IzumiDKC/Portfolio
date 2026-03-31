@@ -16,6 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
   onlineGame = createMemoryOnline({ state, elements, ui, onCardClick: handleCardClick });
   ui.resetLobbyUI();
 
+  if (elements.btnUseHint) {
+    elements.btnUseHint.addEventListener('click', () => {
+      if (elements.btnUseHint.disabled) return;
+      onlineGame.emitUseHint();
+    });
+  }
+
   elements.btnCreateRoom.addEventListener('click', async () => {
     const name = elements.onlineNameInput.value.trim();
     if (!name) {

@@ -49,7 +49,10 @@
         <div class="game-header text-center">
           <span class="section-tag" data-vi="Online Multiplayer" data-en="Online Multiplayer">Online Multiplayer</span>
           <h1 class="section-title" data-vi="Tiến Lên Miền Nam" data-en="Tien Len Mien Nam">Tiến Lên Miền Nam</h1>
-          <p class="game-subtitle" data-vi="Đánh bài tiến lên 4 người." data-en="4-player card game.">Đánh bài tiến lên 4 người vòng tròn.</p>
+          <p class="game-subtitle" data-vi="Đánh bài tiến lên 4 người." data-en="4-player card game.">Đánh bài tiến lên 4 người.</p>
+          <button class="btn-rules mt-2" onclick="document.getElementById('rulesModal').classList.add('active')">
+            <i class="fa-solid fa-circle-question"></i> <span data-vi="Luật chơi" data-en="Rules">Luật chơi</span>
+          </button>
         </div>
 
         <!-- APP SCREENS -->
@@ -200,6 +203,22 @@
     <div class="page-nav-bar">
       <div class="container">
         <a href="games.html" class="page-nav-btn btn-ghost"><i class="fa-solid fa-arrow-left"></i> <span data-vi="Trò chơi" data-en="Games">Trò chơi</span></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules Modal -->
+  <div class="game-modal-overlay" id="rulesModal" onclick="if(event.target===this) this.classList.remove('active')">
+    <div class="game-modal-content">
+      <button class="game-modal-close" onclick="document.getElementById('rulesModal').classList.remove('active')"><i class="fa-solid fa-times"></i></button>
+      <h2 class="game-modal-title" data-vi="Luật Bài Tiến Lên" data-en="Tien Len Rules">Luật Bài Tiến Lên</h2>
+      <div class="game-rules-list">
+        <ul>
+          <li data-vi="<b>Số người:</b> Hỗ trợ từ 2 đến 4 người chơi với bộ bài tây 52 lá." data-en="<b>Players:</b> 2 to 4 players using a standard 52-card deck."><b>Số người:</b> Hỗ trợ từ 2 đến 4 người chơi với bộ bài tây 52 lá.</li>
+          <li data-vi="<b>Cách thắng:</b> Đánh hết bài trên tay đầu tiên. Game tiếp diễn cho đến khi chỉ còn 1 người." data-en="<b>Winning:</b> Be the first to empty your hand. Game continues until only 1 player remains."><b>Cách thắng:</b> Đánh hết bài trên tay đầu tiên. Game tiếp diễn cho đến khi chỉ còn 1 người.</li>
+          <li data-vi="<b>Luật đánh:</b> Hỗ trợ Rác, Đôi, Ba, Sảnh. 3 Đôi Thông chặt 1 Heo..." data-en="<b>Plays:</b> Singles, Pairs, Triples, Straights. 3 straight pairs chop a 2..."><b>Luật đánh:</b> Hỗ trợ Rác, Đôi, Ba, Sảnh. Lượt đánh tự động pass nếu quá 30 giây thời gian cho phép. (Đang cập nhật thêm luật chặt heo).</li>
+          <li data-vi="<b>Bỏ lượt:</b> Khi bị chặn hoặc muốn bỏ chặng, bạn nhấn Pass. Sau khi vòng kết thúc, bạn mới có quyền đi tiếp." data-en="<b>Pass:</b> Skip your turn. You can't play until a new round starts."><b>Bỏ lượt:</b> Khi bạn Pass, bạn sẽ mất quyền tham gia vòng đó cho tới khi vòng mới bắt đầu.</li>
+        </ul>
       </div>
     </div>
   </div>

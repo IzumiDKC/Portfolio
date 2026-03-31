@@ -49,6 +49,9 @@
           <span class="section-tag" data-vi="Online Multiplayer" data-en="Online Multiplayer">Online Multiplayer</span>
           <h1 class="section-title" data-vi="Cờ Caro (Gomoku)" data-en="Caro (Gomoku)">Cờ Caro (Gomoku)</h1>
           <p class="game-subtitle" data-vi="Đánh 5 ô liên tiếp theo hàng ngang, dọc hoặc chéo để chiến thắng." data-en="Connect 5 in a row horizontally, vertically, or diagonally to win.">Đánh 5 ô liên tiếp theo hàng ngang, dọc hoặc chéo để chiến thắng.</p>
+          <button class="btn-rules mt-2" onclick="document.getElementById('rulesModal').classList.add('active')">
+            <i class="fa-solid fa-circle-question"></i> <span data-vi="Luật chơi" data-en="Rules">Luật chơi</span>
+          </button>
         </div>
 
         <!-- APP SCREENS -->
@@ -165,6 +168,22 @@
     <div class="page-nav-bar">
       <div class="container">
         <a href="games.html" class="page-nav-btn btn-ghost"><i class="fa-solid fa-arrow-left"></i> <span data-vi="Trò chơi" data-en="Games">Trò chơi</span></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules Modal -->
+  <div class="game-modal-overlay" id="rulesModal" onclick="if(event.target===this) this.classList.remove('active')">
+    <div class="game-modal-content">
+      <button class="game-modal-close" onclick="document.getElementById('rulesModal').classList.remove('active')"><i class="fa-solid fa-times"></i></button>
+      <h2 class="game-modal-title" data-vi="Luật Chơi Cờ Caro" data-en="Caro Game Rules">Luật Chơi Cờ Caro</h2>
+      <div class="game-rules-list">
+        <ul>
+          <li data-vi="<b>Số người:</b> Hai người chơi đối kháng X và O." data-en="<b>Players:</b> Two players, X and O."><b>Số người:</b> Hai người chơi đối kháng X và O.</li>
+          <li data-vi="<b>Bàn cờ:</b> Bàn cờ dạng lưới 20x20." data-en="<b>Board:</b> The game is played on a 20x20 grid."><b>Bàn cờ:</b> Bàn cờ rộng lớn dạng lưới 20x20.</li>
+          <li data-vi="<b>Mục tiêu:</b> Đặt các quân cờ của mình sao cho tạo thành chuỗi liên tiếp tối thiểu 5 quân trên cùng 1 hàng ngang, dọc hoặc đường chéo." data-en="<b>Goal:</b> Connect exactly 5 stones in a row horizontally, vertically, or diagonally."><b>Mục tiêu:</b> Cố gắng tạo được chuỗi liên tiếp 5 quân cờ trên cùng đường ngang, dọc hoặc chéo trước đối thủ.</li>
+          <li data-vi="<b>Điều kiện kết thúc:</b> Người chơi nào có đường chéo/ngang/dọc dài từ 5 quân trở lên trước sẽ ngay lập tức chiến thắng. (Hiện tại không áp dụng luật chặn 2 đầu)." data-en="<b>Winning Rule:</b> First player to reach 5 in a row wins unconditionally."><b>Điều kiện:</b> Người chơi nào có 5 quân liền nhau trước sẽ mang cúp về!</li>
+        </ul>
       </div>
     </div>
   </div>

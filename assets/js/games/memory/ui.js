@@ -21,25 +21,56 @@ export function createMemoryUi({ state, elements }) {
     });
   }
 
-  function initClientBoard(onCardClick) {
+  function initClientBoard(onCardClick, boardSize = 42, columns = 7, rows = 6) {
     elements.memoryBoard.innerHTML = '';
     elements.memoryBoard.classList.remove('not-my-turn');
+    
+    elements.memoryBoard.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+    elements.memoryBoard.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+    elements.memoryBoard.style.aspectRatio = `${columns} / ${rows}`;
+    
+    const fontSize = columns >= 8 ? '1.2rem' : (columns >= 7 ? '1.5rem' : '2.0rem');
 
-    for (let index = 0; index < BOARD_SIZE; index += 1) {
+    for (let index = 0; index < boardSize; index += 1) {
       const card = document.createElement('div');
       card.className = 'memory-card';
       card.dataset.index = index;
       card.innerHTML = `
         <div class="memory-card-inner">
-          <div class="memory-card-front"></div>
-          <div class="memory-card-back"></div>
+          <div class="memory-card-front" style="font-size: ${fontSize};"></div>
+          <div class="memory-card-back" style="font-size: ${fontSize};"></div>
         </div>
       `;
       card.addEventListener('click', () => onCardClick(index));
       elements.memoryBoard.appendChild(card);
     }
 
-    updateScoresUI({ player1: 0, player2: 0 });
+    // updateScoresUI is now called by the server event directly
+  }
+
+  let timerReq = null;
+  function startTimerBar(duration) {
+    if (timerReq) cancelAnimationFrame(timerReq);
+    elements.turnTimerBar.style.transition = 'none';
+    elements.turnTimerBar.style.transform = 'scaleX(1)';
+    elements.turnTimerBar.classList.remove('warning');
+    
+    // Slight delay to allow CSS reset
+    requestAnimationFrame(() => {
+      elements.turnTimerBar.style.transition = `transform ${duration}ms linear, background-color 0.3s`;
+      elements.turnTimerBar.style.transform = 'scaleX(0)';
+    });
+    
+    const startObj = Date.now();
+    function checkWarning() {
+      const elapsed = Date.now() - startObj;
+      if (elapsed > duration * 0.7) {
+        elements.turnTimerBar.classList.add('warning');
+      } else {
+        timerReq = requestAnimationFrame(checkWarning);
+      }
+    }
+    timerReq = requestAnimationFrame(checkWarning);
   }
 
   function updateOnlineTurnUI(turnPlayerName) {
@@ -53,15 +84,39 @@ export function createMemoryUi({ state, elements }) {
     elements.turnIndicator.style.background = isMe ? 'var(--primary-color)' : 'var(--text-color)';
     elements.turnIndicator.style.color = isMe ? '#ffffff' : 'var(--bg-color)';
     elements.memoryBoard.classList.toggle('not-my-turn', !isMe);
+    
+    if (elements.btnUseHint) {
+      const hasHint = state.hints && state.hints[state.myPlayerName] > 0;
+      elements.btnUseHint.disabled = !isMe || !hasHint;
+    }
   }
 
-  function updateScoresUI(scores) {
-    if (state.onlinePlayers.length < 2) {
-      return;
-    }
+  function updateScoresUI(scores, hints) {
+    if (hints) state.hints = hints;
+    if (state.onlinePlayers.length < 2) return;
+    
+    elements.memoryScoresWrapper.innerHTML = '';
+    
+    const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'];
+    
+    state.onlinePlayers.forEach((playerName, index) => {
+      const score = scores && scores[playerName] !== undefined ? scores[playerName] : 0;
+      const hintCount = hints && hints[playerName] !== undefined ? hints[playerName] : 0;
+      
+      const el = document.createElement('div');
+      el.style.color = colors[index % colors.length];
+      el.style.flex = '1';
+      el.style.textAlign = 'center';
+      
+      el.innerHTML = `<span>${playerName} ${hintCount > 0 ? '💡' : ''}: ${score}</span>`;
+      elements.memoryScoresWrapper.appendChild(el);
+    });
 
-    elements.scoreLabelP1.textContent = `${state.onlinePlayers[0]}: ${scores.player1}`;
-    elements.scoreLabelP2.textContent = `${state.onlinePlayers[1]}: ${scores.player2}`;
+    if (elements.btnUseHint) {
+      const hasHint = state.hints && state.hints[state.myPlayerName] > 0;
+      const isMe = state.currentTurnName === state.myPlayerName;
+      elements.btnUseHint.disabled = !isMe || !hasHint;
+    }
   }
 
   function addLog(playerName, action) {
@@ -117,11 +172,6 @@ export function createMemoryUi({ state, elements }) {
       }
       elements.lobbyPlayerList.appendChild(item);
     });
-
-    if (players.length >= 2) {
-      elements.scoreLabelP1.textContent = `${players[0]}: 0`;
-      elements.scoreLabelP2.textContent = `${players[1]}: 0`;
-    }
   }
 
   function syncHostControls() {
@@ -189,6 +239,7 @@ export function createMemoryUi({ state, elements }) {
     unflipCards,
     updateLobbyPlayerList,
     updateOnlineTurnUI,
-    updateScoresUI
+    updateScoresUI,
+    startTimerBar
   };
 }

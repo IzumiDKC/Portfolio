@@ -81,33 +81,43 @@ export function createMemoryOnline({ state, elements, ui, onCardClick }) {
       ui.syncHostControls();
     });
 
-    state.socket.on('game-started', ({ gameType, currentTurn }) => {
-      if (gameType !== 'memory') {
-        return;
-      }
+    state.socket.on('game-started', ({ gameType, currentTurn, scores, hints, boardSize, columns, rows }) => {
+      if (gameType !== 'memory') return;
 
       state.currentTurnName = currentTurn;
       state.isGameOver = false;
       elements.historyLog.innerHTML = '';
-      ui.initClientBoard(onCardClick);
+      ui.initClientBoard(onCardClick, boardSize, columns, rows);
       ui.updateOnlineTurnUI(currentTurn);
+      ui.updateScoresUI(scores, hints);
+      ui.startTimerBar(15000); // 15s turn
+      
       elements.roomBadge.textContent = `🎮 ${state.currentRoomCode}`;
       elements.roomBadge.style.display = 'inline-block';
       ui.showScreen(elements.playScreen);
     });
 
-    state.socket.on('turn-updated', ({ currentTurn }) => {
+    state.socket.on('turn-updated', ({ currentTurn, turnDuration, hints }) => {
       state.currentTurnName = currentTurn;
       ui.updateOnlineTurnUI(currentTurn);
+      
+      if (hints) {
+        // Just to sync up if any change
+        const dummyScores = {}; // We skip rewriting scores if we just pass hints
+        // Actually, better to just let UI sync if needed, but it's okay, let's keep it simple.
+        // It's mainly updateScoresUI that draws the hints
+      }
+      
+      ui.startTimerBar(turnDuration || 15000);
     });
 
     state.socket.on('memory-card-flipped', ({ cardIndex, emoji }) => {
       ui.flipCard(cardIndex, emoji);
     });
 
-    state.socket.on('memory-match', ({ firstIndex, secondIndex, scorer, scores }) => {
+    state.socket.on('memory-match', ({ firstIndex, secondIndex, scorer, scores, hints }) => {
       ui.markMatched(firstIndex, secondIndex);
-      ui.updateScoresUI(scores);
+      ui.updateScoresUI(scores, hints);
       ui.addLog(scorer, ui.getLang() === 'en' ? 'found a match!' : 'đã tìm thấy 1 cặp!');
     });
 
@@ -156,21 +166,23 @@ export function createMemoryOnline({ state, elements, ui, onCardClick }) {
   }
 
   function emitFlip(cardIndex) {
-    if (state.isGameOver || !state.socket || state.currentTurnName !== state.myPlayerName) {
-      return;
-    }
+    if (state.isGameOver || !state.socket || state.currentTurnName !== state.myPlayerName) return;
 
     const card = elements.memoryBoard.children[cardIndex];
-    if (card.classList.contains('flipped') || card.classList.contains('matched')) {
-      return;
-    }
+    if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
 
     state.socket.emit('memory-flip', { cardIndex });
+  }
+
+  function emitUseHint() {
+    if (state.isGameOver || !state.socket || state.currentTurnName !== state.myPlayerName) return;
+    state.socket.emit('memory-use-hint');
   }
 
   return {
     connectSocket,
     disconnectSocket,
-    emitFlip
+    emitFlip,
+    emitUseHint
   };
 }

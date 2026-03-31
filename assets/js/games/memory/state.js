@@ -6,6 +6,7 @@ export function createMemoryState() {
     myPlayerName: '',
     isHost: false,
     onlinePlayers: [],
-    currentTurnName: ''
+    currentTurnName: '',
+    hints: {}
   };
 }

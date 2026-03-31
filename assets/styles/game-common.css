@@ -430,3 +430,109 @@
   border-bottom: 1px solid var(--border);
 }
 .divider span { padding: 0 10px; }
+
+/* Game Modal Styles */
+.game-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.game-modal-overlay.active {
+  display: flex;
+  opacity: 1;
+}
+.game-modal-content {
+  background: rgba(30,30,35,0.95);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 1rem;
+  padding: 2rem;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  transform: translateY(20px);
+  transition: transform 0.3s ease;
+  position: relative;
+  color: var(--text-color);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+[data-theme="light"] .game-modal-content {
+  background: #ffffff;
+  border-color: rgba(0,0,0,0.1);
+}
+.game-modal-overlay.active .game-modal-content {
+  transform: translateY(0);
+}
+.game-modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+.game-modal-close:hover {
+  background: rgba(255,255,255,0.1);
+  color: #ef4444;
+}
+[data-theme="light"] .game-modal-close:hover {
+  background: rgba(0,0,0,0.05);
+}
+.game-modal-title {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  padding-right: 20px;
+  color: var(--primary-color);
+  font-size: 1.4rem;
+  border-bottom: 1px solid rgba(128,128,128,0.2);
+  padding-bottom: 10px;
+}
+.game-rules-list {
+  text-align: left;
+  line-height: 1.6;
+  font-size: 1rem;
+}
+.game-rules-list ul, .game-rules-list ol {
+  padding-left: 20px;
+  margin-bottom: 1rem;
+}
+.game-rules-list li {
+  margin-bottom: 8px;
+}
+.btn-rules {
+  background: transparent;
+  border: 1px solid var(--text-muted);
+  color: var(--text-secondary);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+.btn-rules:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: rgba(99,102,241,0.1);
+}

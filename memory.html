@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html lang="vi" data-theme="dark" data-lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title data-vi="Lật Bài Giao Lưu – Điền Nguyễn (Iyu)" data-en="Memory Game – Dien Nguyen (Iyu)">Lật Bài Giao Lưu – Điền Nguyễn (Iyu)</title>
-  <script>(function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()</script>
+  <title data-vi="Lật Bài Giao Lưu – Điền Nguyễn (Iyu)" data-en="Memory Game – Dien Nguyen (Iyu)">Lật Bài Giao Lưu –
+    Điền Nguyễn (Iyu)</title>
+  <script>(function () { var t = localStorage.getItem('theme') || 'dark'; document.documentElement.setAttribute('data-theme', t); })()</script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="assets/styles/style.css" />
   <link rel="stylesheet" href="assets/styles/game-common.css" />
@@ -20,6 +24,7 @@
       align-items: center;
       width: 100%;
     }
+
     .memory-scores {
       width: 100%;
       max-width: 400px;
@@ -33,22 +38,33 @@
       font-weight: 600;
       font-size: 1.1rem;
     }
-    .score-p1 { color: #3b82f6; } /* Blueish */
-    .score-p2 { color: #ef4444; } /* Redish */
-    
+
+    .score-p1 {
+      color: #3b82f6;
+    }
+
+    /* Blueish */
+    .score-p2 {
+      color: #ef4444;
+    }
+
+    /* Redish */
+
     .memory-board {
       display: grid;
-      grid-template-columns: repeat(8, 1fr);
-      grid-template-rows: repeat(8, 1fr);
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(6, 1fr);
       gap: 6px;
       width: 100%;
-      max-width: 400px;
-      aspect-ratio: 1/1;
+      max-width: 440px;
+      aspect-ratio: 7/6;
     }
+
     .memory-card {
       perspective: 1000px;
       cursor: pointer;
     }
+
     .memory-card-inner {
       position: relative;
       width: 100%;
@@ -57,14 +73,18 @@
       transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
       transform-style: preserve-3d;
     }
+
     .memory-card.flipped .memory-card-inner,
     .memory-card.matched .memory-card-inner {
       transform: rotateY(180deg);
     }
+
     .memory-card.not-my-turn {
       cursor: not-allowed;
     }
-    .memory-card-front, .memory-card-back {
+
+    .memory-card-front,
+    .memory-card-back {
       position: absolute;
       width: 100%;
       height: 100%;
@@ -75,44 +95,93 @@
       align-items: center;
       justify-content: center;
       font-size: 1.5rem;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
       user-select: none;
     }
+
     .memory-card-front {
       background: linear-gradient(135deg, var(--primary-color), #818cf8);
       color: white;
     }
+
     .memory-card-front::after {
       content: '?';
       font-family: 'JetBrains Mono', monospace;
       font-weight: bold;
       opacity: 0.5;
     }
+
     .memory-card-back {
       background-color: var(--card-bg);
       color: var(--text-color);
       transform: rotateY(180deg);
       border: 3px solid var(--primary-color);
     }
+
     .memory-card.matched .memory-card-back {
       border-color: #22c55e;
       box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
       filter: grayscale(0.5);
     }
+
     .memory-board.not-my-turn {
       opacity: 0.8;
       pointer-events: none;
     }
+
     @media (max-width: 400px) {
       .memory-board {
         gap: 4px;
       }
-      .memory-card-front, .memory-card-back {
+
+      .memory-card-front,
+      .memory-card-back {
         font-size: 1.1rem;
       }
     }
+
+    .timer-bar-container {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      margin-top: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .timer-bar {
+      height: 100%;
+      background: #3b82f6;
+      width: 100%;
+      transform-origin: left;
+      transition: transform 0.1s linear, background-color 0.3s;
+    }
+
+    .timer-bar.warning {
+      background: #ef4444;
+    }
+
+    .hint-btn-container {
+      display: flex;
+      justify-content: flex-end;
+      width: 100%;
+      max-width: 440px;
+      margin-bottom: 8px;
+      margin-top: -8px;
+    }
+
+    #btnUseHint {
+      padding: 4px 12px;
+      font-size: 0.85rem;
+      border-radius: 20px;
+      width: auto;
+      min-height: unset;
+      user-select: none;
+    }
   </style>
 </head>
+
 <body class="game-page">
 
   <!-- Connecting Overlay -->
@@ -128,7 +197,8 @@
         <li><a href="about.html" class="nav-link" data-vi="Về tôi" data-en="About">Về tôi</a></li>
         <li><a href="experience.html" class="nav-link" data-vi="Kinh nghiệm" data-en="Experience">Kinh nghiệm</a></li>
         <li><a href="skills.html" class="nav-link" data-vi="Kỹ năng" data-en="Skills">Kỹ năng</a></li>
-        <li><a href="collection.html" class="nav-link active" data-vi="Bộ sưu tập" data-en="Collection">Bộ sưu tập</a></li>
+        <li><a href="collection.html" class="nav-link active" data-vi="Bộ sưu tập" data-en="Collection">Bộ sưu tập</a>
+        </li>
         <li><a href="contact.html" class="nav-link" data-vi="Liên hệ" data-en="Contact">Liên hệ</a></li>
       </ul>
       <div class="nav-controls">
@@ -142,12 +212,17 @@
   <div class="page-wrapper">
     <section class="game-section">
       <div class="container game-container" style="display:flex; flex-direction:column; align-items:center;">
-        
+
         <!-- Header -->
         <div class="game-header text-center">
           <span class="section-tag" data-vi="Online Multiplayer" data-en="Online Multiplayer">Online Multiplayer</span>
           <h1 class="section-title" data-vi="Lật Bài Giao Lưu" data-en="Memory Match">Lật Bài Giao Lưu</h1>
-          <p class="game-subtitle" data-vi="Tìm các cặp hình giống nhau. Lật trúng bạn được đi tiếp!" data-en="Find matching pairs. Match to keep your turn!">Tìm các cặp hình giống nhau. Lật trúng bạn được đi tiếp!</p>
+          <p class="game-subtitle" data-vi="Tìm các cặp hình giống nhau. Lật trúng bạn được đi tiếp!"
+            data-en="Find matching pairs. Match to keep your turn!">Tìm các cặp hình giống nhau. Lật trúng bạn được đi
+            tiếp!</p>
+          <button class="btn-rules mt-2" onclick="document.getElementById('rulesModal').classList.add('active')">
+            <i class="fa-solid fa-circle-question"></i> <span data-vi="Luật chơi" data-en="Rules">Luật chơi</span>
+          </button>
         </div>
 
         <!-- APP SCREENS -->
@@ -157,27 +232,32 @@
           <div id="lobbyScreen" class="game-screen active">
             <!-- Name Input Step -->
             <div id="lobbyNameStep">
-              <h2 class="screen-title" data-vi="Tham gia Multiplayer" data-en="Join Multiplayer">Tham gia Multiplayer</h2>
-              
+              <h2 class="screen-title" data-vi="Tham gia Multiplayer" data-en="Join Multiplayer">Tham gia Multiplayer
+              </h2>
+
               <div class="input-group">
-                <label for="onlineName" data-vi="Tên hiển thị của bạn:" data-en="Your display name:">Tên hiển thị của bạn:</label>
+                <label for="onlineName" data-vi="Tên hiển thị của bạn:" data-en="Your display name:">Tên hiển thị của
+                  bạn:</label>
                 <input type="text" id="onlineName" class="game-input" placeholder="Ví dụ: Player123" maxlength="15" />
               </div>
 
               <div class="online-actions">
                 <button class="game-btn btn-primary" id="btnCreateRoom">
-                  <i class="fa-solid fa-plus"></i> <span data-vi="Tạo Phòng Mới" data-en="Create New Room">Tạo Phòng Mới</span>
+                  <i class="fa-solid fa-plus"></i> <span data-vi="Tạo Phòng Mới" data-en="Create New Room">Tạo Phòng
+                    Mới</span>
                 </button>
                 <div class="divider">
                   <span data-vi="HOẶC" data-en="OR">HOẶC</span>
                 </div>
                 <button class="game-btn btn-outline" id="btnShowJoin">
-                  <i class="fa-solid fa-right-to-bracket"></i> <span data-vi="Tham Gia Bằng Mã" data-en="Join By Code">Tham Gia Bằng Mã</span>
+                  <i class="fa-solid fa-right-to-bracket"></i> <span data-vi="Tham Gia Bằng Mã"
+                    data-en="Join By Code">Tham Gia Bằng Mã</span>
                 </button>
               </div>
 
               <div class="join-room-group" id="joinRoomGroup">
-                <input type="text" class="game-input" id="roomCodeInput" placeholder="Nhập mã phòng (vd: ABCD12)" maxlength="6" style="text-transform: uppercase;" />
+                <input type="text" class="game-input" id="roomCodeInput" placeholder="Nhập mã phòng (vd: ABCD12)"
+                  maxlength="6" style="text-transform: uppercase;" />
                 <button class="game-btn btn-primary" id="btnJoinRoom">
                   <span data-vi="Vào Phòng" data-en="Enter Room">Vào Phòng</span>
                 </button>
@@ -195,11 +275,13 @@
                   <span id="roomCodeText">------</span>
                   <button class="copy-btn" id="btnCopyCode" title="Copy"><i class="fa-regular fa-copy"></i></button>
                 </div>
-                <p class="small-text mt-1 text-muted" data-vi="Gửi mã này cho bạn bè để họ tham gia." data-en="Share this code with a friend to join.">Gửi mã này cho bạn bè để họ tham gia.</p>
+                <p class="small-text mt-1 text-muted" data-vi="Gửi mã này cho bạn bè để họ tham gia."
+                  data-en="Share this code with a friend to join.">Gửi mã này cho bạn bè để họ tham gia.</p>
               </div>
 
               <div class="lobby-players">
-                <h3><span data-vi="Người Chơi (" data-en="Players (">Người Chơi (</span><span id="playerCountLabel">0</span>/2)</h3>
+                <h3><span data-vi="Người Chơi (" data-en="Players (">Người Chơi (</span><span
+                    id="playerCountLabel">0</span>/4)</h3>
                 <ul id="lobbyPlayerList">
                 </ul>
               </div>
@@ -213,8 +295,11 @@
                 <button class="game-btn btn-primary" id="btnStartOnline" disabled style="flex:1;">
                   <span data-vi="Bắt Đầu Game" data-en="Start Game">Bắt Đầu Game</span> <i class="fa-solid fa-play"></i>
                 </button>
-                <div id="waitHostMessage" style="display:none; width:100%; text-align:center; padding: 12px; background: rgba(99,102,241,0.1); border-radius: 8px; border: 1px dashed rgba(99,102,241,0.3); color: var(--text-primary); font-weight: 500;">
-                  <i class="fa-solid fa-hourglass-half fa-spin" style="color: var(--primary-color);"></i> <span data-vi="Đang chờ chủ phòng bắt đầu..." data-en="Waiting for host to start...">Đang chờ chủ phòng bắt đầu...</span>
+                <div id="waitHostMessage"
+                  style="display:none; width:100%; text-align:center; padding: 12px; background: rgba(99,102,241,0.1); border-radius: 8px; border: 1px dashed rgba(99,102,241,0.3); color: var(--text-primary); font-weight: 500;">
+                  <i class="fa-solid fa-hourglass-half fa-spin" style="color: var(--primary-color);"></i> <span
+                    data-vi="Đang chờ chủ phòng bắt đầu..." data-en="Waiting for host to start...">Đang chờ chủ phòng
+                    bắt đầu...</span>
                 </div>
               </div>
             </div>
@@ -227,17 +312,24 @@
               <div class="turn-indicator" id="turnIndicator" data-vi="Lượt của: " data-en="Turn: ">
                 Lượt của: ---
               </div>
+              <div class="timer-bar-container">
+                <div class="timer-bar" id="turnTimerBar"></div>
+              </div>
             </div>
 
             <div class="play-content memory-play-content mt-3">
-              <div class="memory-scores">
-                <span id="scoreLabelP1" class="score-p1">P1: 0</span>
-                <span id="scoreLabelP2" class="score-p2">P2: 0</span>
+              <div class="memory-scores" id="memoryScoresWrapper">
+                <!-- dynamically injected -->
+              </div>
+              <div class="hint-btn-container">
+                <button class="game-btn btn-outline" id="btnUseHint" disabled title="Dùng Gợi Ý">
+                  💡 <span data-vi="Gợi Ý" data-en="Hint">Gợi Ý</span>
+                </button>
               </div>
               <!-- Grid container -->
               <div id="memoryBoard" class="memory-board"></div>
             </div>
-            
+
             <div class="history-panel mt-4">
               <h3 data-vi="Nhật ký trận đấu" data-en="Match History">Nhật ký trận đấu</h3>
               <div class="history-log" id="historyLog" style="max-height: 150px;">
@@ -249,7 +341,8 @@
           <!-- 3. Game Over Screen -->
           <div id="gameOverScreen" class="game-screen text-center">
             <h2 class="screen-title mb-2 text-gradient" data-vi="Kết Thúc!" data-en="Game Over!">Kết Thúc!</h2>
-            <div class="winner-box p-3 mb-3" style="background: rgba(var(--primary-rgb), 0.1); border-radius: 12px; border: 1px solid var(--primary-color);">
+            <div class="winner-box p-3 mb-3"
+              style="background: rgba(var(--primary-rgb), 0.1); border-radius: 12px; border: 1px solid var(--primary-color);">
               <h3 id="winnerMessage" style="color: var(--primary-color); font-size: 1.5rem; margin: 0;"></h3>
             </div>
             <button class="game-btn btn-primary mt-2" id="btnRestart">
@@ -264,14 +357,47 @@
     <!-- Bottom Nav -->
     <div class="page-nav-bar">
       <div class="container">
-        <a href="games.html" class="page-nav-btn btn-ghost"><i class="fa-solid fa-arrow-left"></i> <span data-vi="Trò chơi" data-en="Games">Trò chơi</span></a>
+        <a href="games.html" class="page-nav-btn btn-ghost"><i class="fa-solid fa-arrow-left"></i> <span
+            data-vi="Trò chơi" data-en="Games">Trò chơi</span></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules Modal -->
+  <div class="game-modal-overlay" id="rulesModal" onclick="if(event.target===this) this.classList.remove('active')">
+    <div class="game-modal-content">
+      <button class="game-modal-close" onclick="document.getElementById('rulesModal').classList.remove('active')"><i
+          class="fa-solid fa-times"></i></button>
+      <h2 class="game-modal-title" data-vi="Luật Chơi Lật Bài" data-en="Memory Game Rules">Luật Chơi Lật Bài</h2>
+      <div class="game-rules-list">
+        <ul>
+          <li data-vi="<b>Mục tiêu:</b> Lật được tất cả các cặp hình giống nhau để ghi điểm."
+            data-en="<b>Goal:</b> Find all matching pairs to score points."><b>Mục tiêu:</b> Lật được tất cả các cặp
+            hình giống nhau để ghi điểm.</li>
+          <li
+            data-vi="<b>Lượt đi:</b> Mỗi người có 15s để lật 2 thẻ. Quá giờ, thẻ sẽ tự úp lại và chuyển lượt. Lật đúng thẻ sẽ được giữ lượt đi tiếp."
+            data-en="<b>Turn limit:</b> Match 2 cards within 15s. Timeout causes turn loss. Matching cards grants an extra turn.">
+            <b>Lượt đi:</b> Mỗi người có 15s để lật 2 thẻ. Quá giờ, thẻ sẽ tự úp lại và chuyển lượt. Lật đúng thẻ sẽ
+            được giữ lượt đi tiếp.</li>
+          <li
+            data-vi="<b>Bàn cờ Ma thuật:</b> Kích thước tỉ lệ thuận với số người (2-4). Ở vòng 3 người, bảng sẽ thả ngẫu nhiên 1 quả <b>Bom 💣 </b>."
+            data-en="<b>Dynamic Board:</b> Varies by players (2-4). In a 3-player game, a random <b>Bomb 💣</b> appears without a pair!">
+            <b>Bàn cờ Ma thuật:</b> Kích thước tỉ lệ thuận với số người (2-4). Ở vòng 3 người, bảng sẽ thả ngẫu nhiên 1
+            quả <b>Bom 💣 </b>. Đừng bấm vào nó vì nó không có cặp!</li>
+          <li
+            data-vi="<b>Nút 💡 Gợi Ý:</b> Mỗi trận chỉ có 1 lần hỗ trợ duy nhất. Cách dùng: Bạn tự lật 1 thẻ lên, rồi bấm nút Gợi ý để máy tự nhận diện và lật thẻ 2. Nhược điểm: sẽ lập tức bị tước quyền đi tiếp."
+            data-en="<b>💡 Hint Button:</b> Used once per game. Flip 1 card, click hint to auto-match. Trade-off: Ends your turn implicitly.">
+            <b>Nút 💡 Gợi Ý:</b> Mỗi trận chỉ có 1 lần hỗ trợ duy nhất. Cách dùng: Bạn tự lật 1 thẻ lên, rồi bấm nút Gợi
+            ý để máy tự nhận diện và lật thẻ 2. Nhược điểm: sẽ lập tức bị tước quyền đi tiếp.</li>
+        </ul>
       </div>
     </div>
   </div>
 
   <footer class="footer mt-auto">
     <div class="container">
-      <p>© 2026 <strong>Điền Nguyễn (Iyu)</strong>. <span data-vi="Được xây dựng với" data-en="Built with">Được xây dựng với</span> <i class="fa-solid fa-heart" style="color:#6366f1;"></i></p>
+      <p>© 2026 <strong>Điền Nguyễn (Iyu)</strong>. <span data-vi="Được xây dựng với" data-en="Built with">Được xây dựng
+          với</span> <i class="fa-solid fa-heart" style="color:#6366f1;"></i></p>
     </div>
   </footer>
 
@@ -286,4 +412,5 @@
   <script src="assets/js/shared/site/boot.js"></script>
   <script type="module" src="assets/js/games/memory/main.js"></script>
 </body>
+
 </html>

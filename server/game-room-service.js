@@ -15,7 +15,8 @@ const {
   startMemoryGame,
   handleMemoryFlip,
   resetMemoryGame,
-  endMemoryBecauseOpponentLeft
+  endMemoryBecauseOpponentLeft,
+  handleMemoryUseHint
 } = require('./games/memory');
 const {
   startTienLenGame,
@@ -160,6 +161,12 @@ function registerGameHandlers(io) {
       const code = socket.roomCode;
       const room = rooms[code];
       handleMemoryFlip(room, socket, io, code, { cardIndex });
+    });
+
+    socket.on('memory-use-hint', () => {
+      const code = socket.roomCode;
+      const room = rooms[code];
+      if (room) handleMemoryUseHint(room, socket, io, code);
     });
 
     socket.on('tien-len-move', ({ cards }) => {
