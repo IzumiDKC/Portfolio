@@ -1,0 +1,30 @@
+name: Deploy Node.js Server to AZVPS
+
+on:
+  push:
+    branches:
+      - main 
+    # Workflow này chỉ chạy khi có code thay đổi ở thư mục server/
+    paths:
+      - 'server/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Executing remote ssh commands using ssh key
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          # Câu lệnh SSH chạy trên AZVPS
+          script: |
+            cd /var/www/portfolio
+            git pull origin main
+            cd server
+            npm install
+            pm2 restart all
