@@ -126,8 +126,57 @@ function validateMove(cardsPlay, lastMove) {
     return false;
 }
 
+// Hệ thống tính điểm & Lịch sử
+function initHistoryIfNeeded(room) {
+    if (!room.history) {
+        room.history = [];
+    }
+}
+
+// Hệ thống tính giờ
+function clearTurnTimer(room) {
+    if (room.turnTimeout) {
+        clearTimeout(room.turnTimeout);
+        room.turnTimeout = null;
+    }
+}
+
+function startTurnTimer(room, io, code) {
+    clearTurnTimer(room);
+    room.turnStartTime = Date.now();
+    room.turnLimit = 30000; // 30s
+
+    room.turnTimeout = setTimeout(() => {
+        // Hết thời gian: tự động đánh hoặc bỏ lượt
+        const player = room.players[room.currentTurnIndex];
+        if (!player) return;
+
+        // Tạo object socket ảo để tận dụng logic có sẵn
+        const dummySocket = {
+            id: player.id,
+            emit: (event, data) => {
+                // Không làm gì thiết thực, chỉ để pass logic
+                console.log(`[Auto] Event ${event} to ${player.name}:`, data);
+            }
+        };
+
+        if (!room.lastMove) {
+            // Đánh đầu vòng: bốc lá nhỏ nhất
+            if (player.hand.length > 0) {
+                let lowestCard = player.hand[0];
+                handleTienLenMove(room, dummySocket, io, code, { cards: [lowestCard] });
+            }
+        } else {
+            // Đã có bài trên bàn: bỏ lượt
+            handleTienLenPass(room, dummySocket, io, code);
+        }
+    }, room.turnLimit);
+}
+
 // Bắt đầu game
 function startTienLenGame(room, io, code) {
+    initHistoryIfNeeded(room);
+
     let deck = createDeck();
     shuffle(deck);
 
@@ -141,15 +190,28 @@ function startTienLenGame(room, io, code) {
         p.hand.sort((a,b) => a - b);
     });
 
-    // Ai có lá bài nhỏ nhất đi trước
-    let lowestCard = 999;
-    let starterIndex = 0;
-    room.players.forEach((p, index) => {
-        if (p.hand.length > 0 && p.hand[0] < lowestCard) {
-            lowestCard = p.hand[0];
-            starterIndex = index;
+    // Ai đi trước?
+    let starterIndex = -1;
+
+    // Xét người thắng ván trước nếu họ còn trong phòng
+    if (room.previousWinnerId) {
+        const winnerIndex = room.players.findIndex(p => p.id === room.previousWinnerId);
+        if (winnerIndex !== -1) {
+            starterIndex = winnerIndex;
         }
-    });
+    }
+
+    // Nếu không ai cạp quyền, chọn người giữ lá nhỏ nhất
+    if (starterIndex === -1) {
+        let lowestCard = 999;
+        room.players.forEach((p, index) => {
+            if (p.hand.length > 0 && p.hand[0] < lowestCard) {
+                lowestCard = p.hand[0];
+                starterIndex = index;
+            }
+        });
+    }
+
     room.currentTurnIndex = starterIndex;
 
     io.to(code).emit('game-started', { gameType: 'tien-len' });
@@ -169,6 +231,10 @@ function nextTurn(room) {
 }
 
 function syncTienLenState(room, io, code) {
+    // Luôn reset timer mỗi khi đồng bộ trạng thái mới
+    // Bởi vì đồng bộ thường xảy ra sau 1 nước đi hoặc vòng mới
+    startTurnTimer(room, io, code);
+
     // Thông tin mỗi người nhìn thấy về đối thủ
     const publicPlayers = room.players.map(p => ({
         id: p.id,
@@ -182,7 +248,9 @@ function syncTienLenState(room, io, code) {
             players: publicPlayers,
             turnId: room.players[room.currentTurnIndex]?.id,
             lastMove: room.lastMove,
-            myHand: p.hand
+            myHand: p.hand,
+            turnStartTime: room.turnStartTime,
+            turnLimit: room.turnLimit
         });
     });
 }
@@ -228,8 +296,33 @@ function handleTienLenMove(room, socket, io, code, { cards }) {
     });
 
     if (player.hand.length === 0) {
-        // Có người hết bài -> Kết thúc game
-        io.to(code).emit('tien-len-winner', { winner: player.name });
+        clearTurnTimer(room);
+
+        // Ghi lại lịch sử
+        room.previousWinnerId = player.id;
+        room.history.push({ 
+            winner: player.name, 
+            time: new Date().toISOString() 
+        });
+
+        // Sync trạng thái cuối trước khi công bố thắng để mọi người thấy lá bài cuối trên bàn
+        room.lastMove = playResult; // Redundant but safe
+        syncTienLenState(room, io, code);
+        clearTurnTimer(room); // Phải clear lại vì sync lại bật timer
+
+        // Gom các lá bài còn dư của người thua
+        const allHands = room.players.map(p => ({
+            id: p.id,
+            name: p.name,
+            hand: p.hand,
+            cardCount: p.hand.length
+        }));
+
+        io.to(code).emit('tien-len-ended', { 
+            winner: player.name, 
+            hands: allHands,
+            history: room.history
+        });
         room.started = false;
         return;
     }
@@ -285,6 +378,7 @@ function endTienLenBecauseOpponentLeft(room, io, code) {
 }
 
 function resetTienLenGame(room) {
+    clearTurnTimer(room);
     room.started = false;
     room.currentTurnIndex = 0;
     room.lastMove = null;

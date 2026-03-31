@@ -91,6 +91,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ui.showScreen('play');
     elements.historyLog.innerHTML = '';
     ui.addLog('Trò chơi bắt đầu! Đang chia bài...', '#22c55e');
+    
+    // Đảm bảo nút điều khiển hiện đúng
+    elements.btnPass.style.display = 'inline-block';
+    elements.btnPlaySelected.style.display = 'inline-block';
+    elements.btnContinueGame.style.display = 'none';
   });
 
   socket.on('tien-len-state', (data) => {
@@ -107,6 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ui.renderOpponents(data.players);
     ui.renderTable(data.lastMove);
     ui.syncTurnState(data.players, data.lastMove);
+    ui.updateTimer(data.turnStartTime, data.turnLimit);
   });
 
   document.getElementById('btnPlaySelected').addEventListener('click', () => {
@@ -135,9 +141,31 @@ document.addEventListener('DOMContentLoaded', () => {
     alert(message);
   });
 
-  socket.on('tien-len-winner', ({ winner }) => {
+  let currentWinner = '';
+
+  socket.on('tien-len-ended', ({ winner, hands, history }) => {
+    currentWinner = winner;
+    
+    // Ngưng đếm giờ
+    ui.updateTimer(null);
+    
+    // Hiện bài của những người còn lại
+    ui.renderEndGameHands(hands);
+    
+    // Phục hồi lịch sử phòng
+    ui.renderHistory(history);
+
+    // Chuyển nút bấm
+    elements.btnPass.style.display = 'none';
+    elements.btnPlaySelected.style.display = 'none';
+    elements.btnContinueGame.style.display = 'inline-block';
+    
+    ui.addLog(`🏆 <b>${winner}</b> là người chiến thắng!`, 'var(--primary-color)');
+  });
+
+  document.getElementById('btnContinueGame').addEventListener('click', () => {
     ui.showScreen('gameOver');
-    elements.winnerMessage.innerText = `Người thắng: ${winner} 🏆`;
+    elements.winnerMessage.innerText = `Người thắng: ${currentWinner} 🏆`;
   });
 
   document.getElementById('btnRestart').addEventListener('click', () => {
@@ -150,6 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.lobbySteps.wait.style.display = 'block';
     state.players = players;
     ui.updateLobbyPlayers();
+    ui.updateTimer(null);
   });
 
   socket.on('player-left', ({ playerName }) => {
