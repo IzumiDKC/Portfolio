@@ -1,4 +1,9 @@
-const EMOJIS = ['🍎', '🍌', '🍒', '🍇', '🍉', '🍓', '🥥', '🥝'];
+const EMOJIS = [
+  '🍎', '🍌', '🍒', '🍇', '🍉', '🍓', '🥥', '🥝',
+  '🍍', '🥭', '🍑', '🍋', '🍈', '🍏', '🍐', '🍊',
+  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼',
+  '🐯', '🦁', '🐮', '🐷', '🐸', '🐒', '🐔', '🐧'
+];
 
 function shuffleDeck() {
   const deck = [...EMOJIS, ...EMOJIS];
@@ -28,7 +33,7 @@ function startMemoryGame(room, io, roomCode) {
     gameType: 'memory',
     currentTurn: room.players[room.currentTurnIndex].name,
     currentTurnIndex: room.currentTurnIndex,
-    boardSize: 16
+    boardSize: 64
   });
 }
 
@@ -76,7 +81,7 @@ function handleMemoryFlip(room, socket, io, roomCode, { cardIndex }) {
         memoryGame.flipped = [];
         memoryGame.processingFlip = false;
         
-        if (memoryGame.matched.length === 16) {
+        if (memoryGame.matched.length === 64) {
           const score1 = memoryGame.scores[room.players[0].id];
           const score2 = memoryGame.scores[room.players[1].id];
           let winnerName = 'Hòa / Draw';
