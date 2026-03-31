@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const SOCKET_URL = isLocalhost 
         ? 'http://localhost:3001' 
-        : 'https://portfolio-3v3i.onrender.com';
+        : 'https://server.dienisme.online';
 
     const langToggleBtn = document.getElementById('langToggle');
 

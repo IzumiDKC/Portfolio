@@ -112,13 +112,21 @@ function registerGameHandlers(io) {
       const code = socket.roomCode;
       const room = rooms[code];
 
+      console.log(`[Debug start-game] code: ${code}, myId: ${socket.id}, room_host: ${room?.host}`);
+
       if (!room) return;
-      if (socket.id !== room.host) return;
+      if (socket.id !== room.host) {
+        console.log(`[Debug start-game] failed: Im not host!`);
+        return;
+      }
 
       if (room.players.length < 2) {
+        console.log(`[Debug start-game] failed: Not enough players`);
         socket.emit('start-error', { message: 'Can it nhat 2 nguoi choi / Need at least 2 players' });
         return;
       }
+
+      console.log(`[Debug start-game] gameType is ${room.gameType}`);
 
       if (room.gameType === 'caro') {
         startCaroGame(room, io, code);
