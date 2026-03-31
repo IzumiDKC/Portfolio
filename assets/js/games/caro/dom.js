@@ -1,0 +1,33 @@
+export function getCaroElements(documentRef = document) {
+  return {
+    lobbyScreen: documentRef.getElementById('lobbyScreen'),
+    playScreen: documentRef.getElementById('playScreen'),
+    gameOverScreen: documentRef.getElementById('gameOverScreen'),
+    lobbyNameStep: documentRef.getElementById('lobbyNameStep'),
+    lobbyWaitStep: documentRef.getElementById('lobbyWaitStep'),
+    onlineNameInput: documentRef.getElementById('onlineName'),
+    btnCreateRoom: documentRef.getElementById('btnCreateRoom'),
+    btnShowJoin: documentRef.getElementById('btnShowJoin'),
+    joinRoomGroup: documentRef.getElementById('joinRoomGroup'),
+    roomCodeInput: documentRef.getElementById('roomCodeInput'),
+    btnJoinRoom: documentRef.getElementById('btnJoinRoom'),
+    roomCodeText: documentRef.getElementById('roomCodeText'),
+    btnCopyCode: documentRef.getElementById('btnCopyCode'),
+    lobbyPlayerList: documentRef.getElementById('lobbyPlayerList'),
+    btnStartOnline: documentRef.getElementById('btnStartOnline'),
+    lobbyStatus: documentRef.getElementById('lobbyStatus'),
+    lobbyWaitStatus: documentRef.getElementById('lobbyWaitStatus'),
+    btnLeaveLobby: documentRef.getElementById('btnLeaveLobby'),
+    connectingOverlay: documentRef.getElementById('connectingOverlay'),
+    playerCountLabel: documentRef.getElementById('playerCountLabel'),
+    roomBadge: documentRef.getElementById('roomBadge'),
+    turnIndicator: documentRef.getElementById('turnIndicator'),
+    caroBoard: documentRef.getElementById('caroBoard'),
+    historyLog: documentRef.getElementById('historyLog'),
+    winnerMessage: documentRef.getElementById('winnerMessage'),
+    btnRestart: documentRef.getElementById('btnRestart'),
+    waitHostMessage: documentRef.getElementById('waitHostMessage'),
+    btnBackToSetup: documentRef.getElementById('btnBackToSetup'),
+    langToggleBtn: documentRef.getElementById('langToggle')
+  };
+}
