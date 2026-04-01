@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark" data-lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-vi="Cờ Vây – Điền Nguyễn (Iyu)" data-en="Go (Igo) – Dien Nguyen (Iyu)">Cờ Vây – Điền Nguyễn (Iyu)</title>
+  <meta name="description" content="Chơi Cờ Vây (Go) online 2 người với bạn bè. Bàn cờ 19×19 với timer 20 giây mỗi lượt." />
+  <script>(function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="assets/styles/style.css" />
+  <link rel="stylesheet" href="assets/styles/game-common.css" />
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    /* ── Go board color tokens ── */
+    :root {
+      --go-board-color: #c8a45a;
+      --go-board-shadow: rgba(0,0,0,0.4);
+    }
+    [data-theme="light"] {
+      --go-board-color: #dcb060;
+    }
+
+    /* ── Board wrapper ── */
+    .go-play-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .go-board-wrap {
+      position: relative;
+      overflow: auto;
+      max-width: 100%;
+    }
+
+    #goBoard svg {
+      box-shadow: 0 8px 32px var(--go-board-shadow);
+      border-radius: 8px;
+      transition: opacity 0.2s;
+    }
+
+    #goBoard.not-my-turn svg {
+      opacity: 0.85;
+      cursor: not-allowed;
+    }
+
+    /* Stone place animation */
+    @keyframes stonePlace {
+      from { transform: scale(0.6); opacity: 0.5; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    /* ── Info Bar (captures + timer) ── */
+    .go-info-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      width: 100%;
+      max-width: 640px;
+      padding: 0.75rem 1.25rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+    }
+
+    .go-player-info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+      font-size: 0.85rem;
+    }
+
+    .go-player-info .player-label {
+      font-weight: 700;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .go-player-info .captures {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    .go-captures-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: rgba(var(--primary-rgb), 0.12);
+      border: 1px solid rgba(var(--primary-rgb), 0.25);
+      border-radius: 20px;
+      padding: 0.15rem 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+
+    /* ── Timer Ring ── */
+    .timer-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .timer-ring-svg {
+      position: relative;
+      width: 52px;
+      height: 52px;
+    }
+
+    .timer-ring-bg {
+      fill: none;
+      stroke: var(--border-color);
+      stroke-width: 4;
+    }
+
+    #timerRing {
+      fill: none;
+      stroke-width: 4;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: center;
+      transition: stroke-dasharray 0.9s linear, stroke 0.3s;
+      stroke: var(--primary-color);
+    }
+
+    .timer-text-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .timer-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Action Buttons ── */
+    .go-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-pass {
+      background: rgba(99,102,241,0.12);
+      border: 1.5px solid var(--primary-color);
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    .btn-pass:hover:not(:disabled) {
+      background: var(--primary-color);
+      color: #fff;
+    }
+
+    .btn-resign {
+      background: rgba(239,68,68,0.08);
+      border: 1.5px solid #ef4444;
+      color: #ef4444;
+      font-weight: 600;
+    }
+
+    .btn-resign:hover:not(:disabled) {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .btn-pass:disabled,
+    .btn-resign:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    /* ── Score Details (game over) ── */
+    .score-details {
+      margin: 1rem 0;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .score-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.95rem;
+    }
+
+    .score-row:first-child {
+      background: rgba(0,0,0,0.1);
+    }
+
+    .score-row:last-child {
+      background: rgba(255,255,255,0.04);
+    }
+
+    .score-val {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--primary-color);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .go-info-bar {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body class="game-page">
+
+  <!-- Connecting Overlay -->
+  <div id="connectingOverlay" class="connecting-overlay">
+    <div class="spinner"></div>
+    <p data-vi="Đang kết nối đến server..." data-en="Connecting to server...">Đang kết nối đến server...</p>
+  </div>
+
+  <nav id="navbar" class="scrolled">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">iyu<span class="logo-dot">.</span></a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="about.html" class="nav-link" data-vi="Về tôi" data-en="About">Về tôi</a></li>
+        <li><a href="experience.html" class="nav-link" data-vi="Kinh nghiệm" data-en="Experience">Kinh nghiệm</a></li>
+        <li><a href="skills.html" class="nav-link" data-vi="Kỹ năng" data-en="Skills">Kỹ năng</a></li>
+        <li><a href="collection.html" class="nav-link active" data-vi="Bộ sưu tập" data-en="Collection">Bộ sưu tập</a></li>
+        <li><a href="contact.html" class="nav-link" data-vi="Liên hệ" data-en="Contact">Liên hệ</a></li>
+      </ul>
+      <div class="nav-controls">
+        <button id="langToggle" class="nav-ctrl-btn" title="Switch language">EN</button>
+        <button id="themeToggle" class="nav-ctrl-btn" title="Toggle theme"><i class="fa-solid fa-sun"></i></button>
+        <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    <section class="game-section">
+      <div class="container game-container" style="display:flex;flex-direction:column;align-items:center;">
+
+        <!-- Header -->
+        <div class="game-header text-center">
+          <span class="section-tag" data-vi="Online Multiplayer" data-en="Online Multiplayer">Online Multiplayer</span>
+          <h1 class="section-title" data-vi="Cờ Vây (Go)" data-en="Go (Igo / Weiqi)">Cờ Vây (Go)</h1>
+          <p class="game-subtitle" data-vi="Trò chơi chiến lược cổ điển 2 người. Bàn cờ 19×19 · Timer 20s mỗi lượt." data-en="Classic 2-player strategy game on a 19×19 board with a 20-second timer.">
+            Trò chơi chiến lược cổ điển 2 người. Bàn cờ 19×19 · Timer 20s mỗi lượt.
+          </p>
+          <button class="btn-rules mt-2" onclick="document.getElementById('rulesModal').classList.add('active')">
+            <i class="fa-solid fa-circle-question"></i> <span data-vi="Luật chơi" data-en="Rules">Luật chơi</span>
+          </button>
+        </div>
+
+        <!-- APP SCREENS -->
+        <div class="game-card">
+
+          <!-- 1. Lobby Screen -->
+          <div id="lobbyScreen" class="game-screen active">
+            <div id="lobbyNameStep">
+              <h2 class="screen-title" data-vi="Tham gia Multiplayer" data-en="Join Multiplayer">Tham gia Multiplayer</h2>
+              <div class="input-group">
+                <label for="onlineName" data-vi="Tên hiển thị của bạn:" data-en="Your display name:">Tên hiển thị của bạn:</label>
+                <input type="text" id="onlineName" class="game-input" placeholder="Ví dụ: Player123" maxlength="15" />
+              </div>
+              <div class="online-actions">
+                <button class="game-btn btn-primary" id="btnCreateRoom">
+                  <i class="fa-solid fa-plus"></i> <span data-vi="Tạo Phòng Mới" data-en="Create New Room">Tạo Phòng Mới</span>
+                </button>
+                <div class="divider"><span data-vi="HOẶC" data-en="OR">HOẶC</span></div>
+                <button class="game-btn btn-outline" id="btnShowJoin">
+                  <i class="fa-solid fa-right-to-bracket"></i> <span data-vi="Tham Gia Bằng Mã" data-en="Join By Code">Tham Gia Bằng Mã</span>
+                </button>
+              </div>
+              <div class="join-room-group" id="joinRoomGroup">
+                <input type="text" class="game-input" id="roomCodeInput" placeholder="Nhập mã phòng (vd: ABCD12)" maxlength="6" style="text-transform:uppercase;" />
+                <button class="game-btn btn-primary" id="btnJoinRoom">
+                  <span data-vi="Vào Phòng" data-en="Enter Room">Vào Phòng</span>
+                </button>
+              </div>
+              <div id="lobbyStatus" class="status-message"></div>
+            </div>
+
+            <!-- Waiting room -->
+            <div id="lobbyWaitStep" style="display:none;">
+              <h2 class="screen-title" data-vi="Phòng Chờ" data-en="Waiting Room">Phòng Chờ</h2>
+              <div class="room-info-card">
+                <p data-vi="Mã phòng của bạn:" data-en="Your Room Code:">Mã phòng của bạn:</p>
+                <div class="room-code-display" id="roomCodeDisplay">
+                  <span id="roomCodeText">------</span>
+                  <button class="copy-btn" id="btnCopyCode" title="Copy"><i class="fa-regular fa-copy"></i></button>
+                </div>
+                <p class="small-text mt-1 text-muted" data-vi="Gửi mã này cho bạn bè để họ tham gia." data-en="Share this code with a friend to join.">Gửi mã này cho bạn bè để họ tham gia.</p>
+              </div>
+              <div class="lobby-players">
+                <h3><span data-vi="Người Chơi (" data-en="Players (">Người Chơi (</span><span id="playerCountLabel">0</span>/2)</h3>
+                <ul id="lobbyPlayerList"></ul>
+              </div>
+              <div id="lobbyWaitStatus" class="status-message"></div>
+              <div class="button-group mt-3" style="gap:1rem;flex-wrap:wrap;">
+                <button class="game-btn btn-outline" id="btnLeaveLobby" style="flex:1;">
+                  <i class="fa-solid fa-arrow-left"></i> <span data-vi="Rời Phòng" data-en="Leave">Rời Phòng</span>
+                </button>
+                <button class="game-btn btn-primary" id="btnStartOnline" disabled style="flex:1;">
+                  <span data-vi="Bắt Đầu Game" data-en="Start Game">Bắt Đầu Game</span> <i class="fa-solid fa-play"></i>
+                </button>
+                <div id="waitHostMessage" style="display:none;width:100%;text-align:center;padding:12px;background:rgba(99,102,241,0.1);border-radius:8px;border:1px dashed rgba(99,102,241,0.3);color:var(--text-primary);font-weight:500;">
+                  <i class="fa-solid fa-hourglass-half fa-spin" style="color:var(--primary-color);"></i>
+                  <span data-vi="Đang chờ chủ phòng bắt đầu..." data-en="Waiting for host to start...">Đang chờ chủ phòng bắt đầu...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Play Screen -->
+          <div id="playScreen" class="game-screen">
+            <div class="play-header">
+              <span class="room-badge" id="roomBadge" style="display:none;" title="Room Code">🎮 ROOM</span>
+              <div class="turn-indicator" id="turnIndicator">Lượt của: ---</div>
+            </div>
+
+            <div class="go-play-content">
+              <!-- Info Bar: captures + timer -->
+              <div class="go-info-bar">
+                <!-- Black player -->
+                <div class="go-player-info">
+                  <div class="player-label">
+                    <svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="#111" stroke="#555" stroke-width="1"/></svg>
+                    <span data-vi="Đen" data-en="Black">Đen</span>
+                  </div>
+                  <div class="go-captures-badge">
+                    <i class="fa-solid fa-skull-crossbones" style="font-size:0.7rem;"></i>
+                    <span id="blackCaptureCount">0</span>
+                    <span style="font-weight:400;opacity:0.7;" data-vi="bắt" data-en="cap">bắt</span>
+                  </div>
+                  <div class="captures" id="blackScore"></div>
+                </div>
+
+                <!-- Timer -->
+                <div class="timer-wrap">
+                  <div class="timer-ring-svg" style="position:relative;width:52px;height:52px;">
+                    <svg width="52" height="52" viewBox="0 0 52 52" style="position:absolute;top:0;left:0;">
+                      <circle class="timer-ring-bg" cx="26" cy="26" r="18"/>
+                      <circle id="timerRing" cx="26" cy="26" r="18"
+                        style="stroke-dasharray:113.1 113.1; transform:rotate(-90deg); transform-origin:26px 26px;"/>
+                    </svg>
+                    <div class="timer-text-center">
+                      <span id="timerText">20</span>
+                    </div>
+                  </div>
+                  <div class="timer-label" data-vi="giây" data-en="sec">giây</div>
+                </div>
+
+                <!-- White player -->
+                <div class="go-player-info">
+                  <div class="player-label">
+                    <svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="#eee" stroke="#aaa" stroke-width="1"/></svg>
+                    <span data-vi="Trắng" data-en="White">Trắng</span>
+                  </div>
+                  <div class="go-captures-badge">
+                    <i class="fa-solid fa-skull-crossbones" style="font-size:0.7rem;"></i>
+                    <span id="whiteCaptureCount">0</span>
+                    <span style="font-weight:400;opacity:0.7;" data-vi="bắt" data-en="cap">bắt</span>
+                  </div>
+                  <div class="captures" id="whiteScore"></div>
+                </div>
+              </div>
+
+              <!-- Board -->
+              <div class="go-board-wrap">
+                <div id="goBoard"></div>
+              </div>
+
+              <!-- Pass / Resign -->
+              <div class="go-actions">
+                <button class="game-btn btn-pass" id="btnPass" disabled>
+                  <i class="fa-solid fa-forward-step"></i>
+                  <span data-vi="Bỏ lượt" data-en="Pass">Bỏ lượt</span>
+                </button>
+                <button class="game-btn btn-resign" id="btnResign" disabled>
+                  <i class="fa-solid fa-flag"></i>
+                  <span data-vi="Đầu hàng" data-en="Resign">Đầu hàng</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- History -->
+            <div class="history-panel mt-3">
+              <h3 data-vi="Nhật ký trận đấu" data-en="Move History">Nhật ký trận đấu</h3>
+              <div class="history-log" id="historyLog"></div>
+            </div>
+          </div>
+
+          <!-- 3. Game Over Screen -->
+          <div id="gameOverScreen" class="game-screen text-center">
+            <h2 class="screen-title mb-2 text-gradient" data-vi="Kết Thúc!" data-en="Game Over!">Kết Thúc!</h2>
+            <div class="winner-box p-3 mb-3" style="background:rgba(var(--primary-rgb),0.1);border-radius:12px;border:1px solid var(--primary-color);">
+              <h3 id="winnerMessage" style="color:var(--primary-color);font-size:1.5rem;margin:0;"></h3>
+            </div>
+            <div id="scoreDetails" class="score-details" style="display:none;"></div>
+            <button class="game-btn btn-primary mt-2" id="btnRestart">
+              <i class="fa-solid fa-rotate-right"></i> <span data-vi="Chơi lại" data-en="Play Again">Chơi lại</span>
+            </button>
+          </div>
+
+        </div><!-- .game-card -->
+      </div>
+    </section>
+
+    <!-- Bottom Nav -->
+    <div class="page-nav-bar">
+      <div class="container">
+        <a href="games.html" class="page-nav-btn btn-ghost"><i class="fa-solid fa-arrow-left"></i> <span data-vi="Trò chơi" data-en="Games">Trò chơi</span></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules Modal -->
+  <div class="game-modal-overlay" id="rulesModal">
+    <div class="game-modal-content">
+      <button class="game-modal-close" onclick="document.getElementById('rulesModal').classList.remove('active')"><i class="fa-solid fa-times"></i></button>
+      <h2 class="game-modal-title" data-vi="Luật Chơi Cờ Vây" data-en="Go Game Rules">Luật Chơi Cờ Vây</h2>
+      <div class="game-rules-list">
+        <ul>
+          <li data-vi="<b>Số người:</b> Hai người chơi — Đen (đi trước) và Trắng." data-en="<b>Players:</b> Two players — Black (goes first) and White."><b>Số người:</b> Hai người chơi — Đen (đi trước) và Trắng.</li>
+          <li data-vi="<b>Bàn cờ:</b> Lưới 19×19 giao điểm. Các quân được đặt tại giao điểm (không phải ô vuông)." data-en="<b>Board:</b> 19×19 grid of intersections. Stones are placed on intersections, not squares."><b>Bàn cờ:</b> Lưới 19×19 giao điểm. Các quân được đặt tại giao điểm.</li>
+          <li data-vi="<b>Khí (Liberties):</b> Các giao điểm trống kề trực tiếp (ngang/dọc) với một quân cờ gọi là 'khí'. Nhóm quân hết khí sẽ bị bắt và xóa khỏi bàn." data-en="<b>Liberties:</b> Empty adjacent intersections of a stone/group. A group with no liberties is captured and removed."><b>Khí:</b> Ô trống kề với quân. Nhóm hết khí → bị bắt.</li>
+          <li data-vi="<b>Tự sát:</b> Không được đặt quân vào vị trí khiến nhóm của mình hết khí (trừ trường hợp nước đó ăn được quân địch)." data-en="<b>Self-capture:</b> Forbidden to place a stone where your group has no liberties (unless it captures opponent stones)."><b>Tự sát:</b> Bị cấm — trừ khi đồng thời bắt được quân đối thủ.</li>
+          <li data-vi="<b>Luật Ko:</b> Không được thực hiện nước đi khiến bàn cờ quay lại trạng thái ngay trước đó." data-en="<b>Ko Rule:</b> It is forbidden to recreate the exact board position from the immediately previous turn."><b>Luật Ko:</b> Cấm lặp lại trạng thái bàn cờ từ lượt trước.</li>
+          <li data-vi="<b>Bỏ lượt (Pass):</b> Người chơi có thể từ chối đặt quân. Hai lần bỏ lượt liên tiếp → kết thúc trận." data-en="<b>Pass:</b> A player may pass their turn. Two consecutive passes end the game."><b>Bỏ lượt:</b> Hai lần liên tiếp → kết thúc trận.</li>
+          <li data-vi="<b>Đầu hàng:</b> Người chơi có thể nhấn 'Đầu hàng' để thua ngay lập tức." data-en="<b>Resign:</b> A player may resign at any time, conceding the game."><b>Đầu hàng:</b> Nhấn nút để thua ngay.</li>
+          <li data-vi="<b>Tính điểm (Japanese):</b> Điểm = Lãnh thổ kiểm soát + Số quân đã bắt. Người Trắng nhận thêm 6.5 điểm Komi." data-en="<b>Scoring (Japanese):</b> Points = Controlled territory + Captures. White receives 6.5 komi points."><b>Tính điểm:</b> Lãnh thổ + Quân bắt. Trắng +6.5 điểm komi.</li>
+          <li data-vi="<b>Hẹn giờ:</b> Mỗi lượt có <b>20 giây</b>. Hết giờ → tự động bỏ lượt." data-en="<b>Timer:</b> Each turn has <b>20 seconds</b>. Time up → automatic pass."><b>Hẹn giờ:</b> 20 giây/lượt. Hết giờ → tự động bỏ lượt.</li>
+        </ul>
+        <div style="text-align:center;margin-top:2rem;">
+          <button class="game-btn btn-primary" onclick="document.getElementById('rulesModal').classList.remove('active')" style="display:inline-block;width:auto;padding:0.8rem 2.5rem;">
+            <i class="fa-solid fa-check"></i> <span data-vi="Đã hiểu" data-en="Understood">Đã hiểu</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer mt-auto">
+    <div class="container">
+      <p>© 2026 <strong>Điền Nguyễn (Iyu)</strong>. <span data-vi="Được xây dựng với" data-en="Built with">Được xây dựng với</span> <i class="fa-solid fa-heart" style="color:#6366f1;"></i></p>
+    </div>
+  </footer>
+
+  <script src="assets/js/shared/preferences/theme.js"></script>
+  <script src="assets/js/shared/preferences/language.js"></script>
+  <script src="assets/js/shared/preferences/boot.js"></script>
+  <script src="assets/js/shared/site/navbar.js"></script>
+  <script src="assets/js/shared/site/mobile-menu.js"></script>
+  <script src="assets/js/shared/site/observers.js"></script>
+  <script src="assets/js/shared/site/effects.js"></script>
+  <script src="assets/js/shared/site/transitions.js"></script>
+  <script src="assets/js/shared/site/boot.js"></script>
+  <script type="module" src="assets/js/games/go/main.js"></script>
+  <script>
+    (function() {
+      const modal = document.getElementById('rulesModal');
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && modal.classList.contains('active')) {
+          modal.classList.remove('active');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

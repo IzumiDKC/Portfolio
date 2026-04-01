@@ -33,6 +33,14 @@ const {
   resetMinesweeperGame,
   endMinesweeperBecauseOpponentLeft
 } = require('./games/minesweeper');
+const {
+  startGoGame,
+  handleGoMove,
+  handleGoPass,
+  handleGoResign,
+  resetGoGame,
+  endGoBecauseOpponentLeft
+} = require('./games/go');
 
 const rooms = {};
 
@@ -157,6 +165,11 @@ function registerGameHandlers(io) {
         return;
       }
 
+      if (room.gameType === 'go') {
+        startGoGame(room, io, code);
+        return;
+      }
+
       startSecretNumberGame(room, io, code);
     });
 
@@ -208,6 +221,24 @@ function registerGameHandlers(io) {
       handleMinesweeperFlag(room, socket, io, code, { row, col });
     });
 
+    socket.on('go-move', ({ row, col }) => {
+      const code = socket.roomCode;
+      const room = rooms[code];
+      handleGoMove(room, socket, io, code, { row, col });
+    });
+
+    socket.on('go-pass', () => {
+      const code = socket.roomCode;
+      const room = rooms[code];
+      handleGoPass(room, socket, io, code);
+    });
+
+    socket.on('go-resign', () => {
+      const code = socket.roomCode;
+      const room = rooms[code];
+      handleGoResign(room, socket, io, code);
+    });
+
     socket.on('play-again', () => {
       const code = socket.roomCode;
       const room = rooms[code];
@@ -219,6 +250,7 @@ function registerGameHandlers(io) {
       resetMemoryGame(room);
       resetTienLenGame(room);
       resetMinesweeperGame(room);
+      resetGoGame(room);
 
       io.to(code).emit('back-to-lobby', {
         players: room.players.map((player) => player.name)
@@ -266,6 +298,8 @@ function registerGameHandlers(io) {
           endTienLenBecauseOpponentLeft(room, io, code);
         } else if (room.gameType === 'minesweeper') {
           endMinesweeperBecauseOpponentLeft(room, io, code);
+        } else if (room.gameType === 'go') {
+          endGoBecauseOpponentLeft(room, io, code);
         } else {
           endSecretNumberBecauseOpponentLeft(room, io, code);
         }

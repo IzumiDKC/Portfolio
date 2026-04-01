@@ -1,0 +1,47 @@
+export function getGoElements() {
+  return {
+    connectingOverlay: document.getElementById('connectingOverlay'),
+    // Lobby
+    lobbyScreen: document.getElementById('lobbyScreen'),
+    lobbyNameStep: document.getElementById('lobbyNameStep'),
+    lobbyWaitStep: document.getElementById('lobbyWaitStep'),
+    onlineNameInput: document.getElementById('onlineName'),
+    btnCreateRoom: document.getElementById('btnCreateRoom'),
+    btnShowJoin: document.getElementById('btnShowJoin'),
+    joinRoomGroup: document.getElementById('joinRoomGroup'),
+    roomCodeInput: document.getElementById('roomCodeInput'),
+    btnJoinRoom: document.getElementById('btnJoinRoom'),
+    lobbyStatus: document.getElementById('lobbyStatus'),
+    roomCodeText: document.getElementById('roomCodeText'),
+    btnCopyCode: document.getElementById('btnCopyCode'),
+    lobbyPlayerList: document.getElementById('lobbyPlayerList'),
+    playerCountLabel: document.getElementById('playerCountLabel'),
+    lobbyWaitStatus: document.getElementById('lobbyWaitStatus'),
+    btnStartOnline: document.getElementById('btnStartOnline'),
+    btnLeaveLobby: document.getElementById('btnLeaveLobby'),
+    waitHostMessage: document.getElementById('waitHostMessage'),
+    // Play
+    playScreen: document.getElementById('playScreen'),
+    roomBadge: document.getElementById('roomBadge'),
+    turnIndicator: document.getElementById('turnIndicator'),
+    timerBar: document.getElementById('timerBar'),
+    timerText: document.getElementById('timerText'),
+    timerRing: document.getElementById('timerRing'),
+    goBoard: document.getElementById('goBoard'),
+    goBoardSvg: document.getElementById('goBoardSvg'),
+    blackCaptureCount: document.getElementById('blackCaptureCount'),
+    whiteCaptureCount: document.getElementById('whiteCaptureCount'),
+    blackScoreEl: document.getElementById('blackScore'),
+    whiteScoreEl: document.getElementById('whiteScore'),
+    btnPass: document.getElementById('btnPass'),
+    btnResign: document.getElementById('btnResign'),
+    historyLog: document.getElementById('historyLog'),
+    // Game Over
+    gameOverScreen: document.getElementById('gameOverScreen'),
+    winnerMessage: document.getElementById('winnerMessage'),
+    scoreDetails: document.getElementById('scoreDetails'),
+    btnRestart: document.getElementById('btnRestart'),
+    // Misc
+    langToggleBtn: document.getElementById('langToggle')
+  };
+}
