@@ -7,6 +7,12 @@
       document.body.style.opacity = '1';
     });
 
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) {
+        document.body.style.opacity = '1';
+      }
+    });
+
     document.querySelectorAll('a[href]').forEach((link) => {
       const href = link.getAttribute('href');
       if (!href || !/\.html$/.test(href) || /^https?/.test(href)) {

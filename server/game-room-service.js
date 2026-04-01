@@ -25,6 +25,14 @@ const {
   endTienLenBecauseOpponentLeft,
   resetTienLenGame
 } = require('./games/tien-len');
+const {
+  createMinesweeperBoard,
+  startMinesweeperGame,
+  handleMinesweeperReveal,
+  handleMinesweeperFlag,
+  resetMinesweeperGame,
+  endMinesweeperBecauseOpponentLeft
+} = require('./games/minesweeper');
 
 const rooms = {};
 
@@ -60,10 +68,13 @@ function registerGameHandlers(io) {
         secretNumber: null,
         minRange: 0,
         maxRange: 1000,
-        board: createEmptyBoard(),
+        board: gameType === 'minesweeper' ? createMinesweeperBoard() : createEmptyBoard(),
         currentTurnIndex: 0,
         started: false,
-        history: []
+        history: [],
+        minesPlaced: false,
+        eliminatedPlayers: [],
+        alivePlayers: []
       };
 
       socket.join(roomCode);
@@ -141,6 +152,10 @@ function registerGameHandlers(io) {
         startTienLenGame(room, io, code);
         return;
       }
+      if (room.gameType === 'minesweeper') {
+        startMinesweeperGame(room, io, code);
+        return;
+      }
 
       startSecretNumberGame(room, io, code);
     });
@@ -181,6 +196,18 @@ function registerGameHandlers(io) {
       handleTienLenPass(room, socket, io, code);
     });
 
+    socket.on('minesweeper-reveal', ({ row, col }) => {
+      const code = socket.roomCode;
+      const room = rooms[code];
+      handleMinesweeperReveal(room, socket, io, code, { row, col });
+    });
+
+    socket.on('minesweeper-flag', ({ row, col }) => {
+      const code = socket.roomCode;
+      const room = rooms[code];
+      handleMinesweeperFlag(room, socket, io, code, { row, col });
+    });
+
     socket.on('play-again', () => {
       const code = socket.roomCode;
       const room = rooms[code];
@@ -191,6 +218,7 @@ function registerGameHandlers(io) {
       resetCaroGame(room);
       resetMemoryGame(room);
       resetTienLenGame(room);
+      resetMinesweeperGame(room);
 
       io.to(code).emit('back-to-lobby', {
         players: room.players.map((player) => player.name)
@@ -236,6 +264,8 @@ function registerGameHandlers(io) {
           endMemoryBecauseOpponentLeft(room, io, code);
         } else if (room.gameType === 'tien-len') {
           endTienLenBecauseOpponentLeft(room, io, code);
+        } else if (room.gameType === 'minesweeper') {
+          endMinesweeperBecauseOpponentLeft(room, io, code);
         } else {
           endSecretNumberBecauseOpponentLeft(room, io, code);
         }

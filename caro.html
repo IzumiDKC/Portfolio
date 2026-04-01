@@ -173,7 +173,7 @@
   </div>
 
   <!-- Rules Modal -->
-  <div class="game-modal-overlay" id="rulesModal" onclick="if(event.target===this) this.classList.remove('active')">
+  <div class="game-modal-overlay" id="rulesModal">
     <div class="game-modal-content">
       <button class="game-modal-close" onclick="document.getElementById('rulesModal').classList.remove('active')"><i class="fa-solid fa-times"></i></button>
       <h2 class="game-modal-title" data-vi="Luật Chơi Cờ Caro" data-en="Caro Game Rules">Luật Chơi Cờ Caro</h2>
@@ -184,6 +184,11 @@
           <li data-vi="<b>Mục tiêu:</b> Đặt các quân cờ của mình sao cho tạo thành chuỗi liên tiếp tối thiểu 5 quân trên cùng 1 hàng ngang, dọc hoặc đường chéo." data-en="<b>Goal:</b> Connect exactly 5 stones in a row horizontally, vertically, or diagonally."><b>Mục tiêu:</b> Cố gắng tạo được chuỗi liên tiếp 5 quân cờ trên cùng đường ngang, dọc hoặc chéo trước đối thủ.</li>
           <li data-vi="<b>Điều kiện kết thúc:</b> Người chơi nào có đường chéo/ngang/dọc dài từ 5 quân trở lên trước sẽ ngay lập tức chiến thắng. (Hiện tại không áp dụng luật chặn 2 đầu)." data-en="<b>Winning Rule:</b> First player to reach 5 in a row wins unconditionally."><b>Điều kiện:</b> Người chơi nào có 5 quân liền nhau trước sẽ mang cúp về!</li>
         </ul>
+        <div style="text-align: center; margin-top: 2rem;">
+          <button class="game-btn" onclick="document.getElementById('rulesModal').classList.remove('active')" style="display: inline-block; width: auto; padding: 0.8rem 2.5rem;">
+            <i class="fa-solid fa-check"></i> <span data-vi="Đã hiểu" data-en="Understood">Đã hiểu</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -204,5 +209,15 @@
   <script src="assets/js/shared/site/transitions.js"></script>
   <script src="assets/js/shared/site/boot.js"></script>
   <script type="module" src="assets/js/games/caro/main.js"></script>
+  <script>
+    (function() {
+      const rulesModal = document.getElementById('rulesModal');
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && rulesModal && rulesModal.classList.contains('active')) {
+          rulesModal.classList.remove('active');
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark" data-lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-vi="Dò Mìn – Điền Nguyễn (Iyu)" data-en="Minesweeper – Dien Nguyen (Iyu)">Dò Mìn – Điền Nguyễn (Iyu)</title>
+  <meta name="description" content="Trò chơi Dò Mìn nhiều người chơi trực tuyến – bàn cờ 10x10. Chơi cùng bạn bè theo thời gian thực!" />
+  <script>(function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="assets/styles/style.css" />
+  <link rel="stylesheet" href="assets/styles/game-common.css" />
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+  <style>
+    /* ═══════════════════ MINESWEEPER STYLES ═══════════════════ */
+    .ms-page .game-card {
+      max-width: 720px;
+    }
+
+    /* Info bar */
+    .ms-info-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .ms-mine-counter {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #ef4444;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 0.5rem;
+      padding: 0.4rem 1rem;
+    }
+    [data-theme="light"] .ms-mine-counter {
+      background: rgba(239,68,68,0.07);
+    }
+    .ms-mine-counter i { font-size: 1.1rem; }
+
+    .alive-players-bar {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .alive-chip {
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      background: rgba(99,102,241,0.12);
+      border: 1px solid rgba(99,102,241,0.25);
+      color: var(--text-primary);
+    }
+    .alive-chip.me {
+      background: rgba(99,102,241,0.25);
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+
+    /* Turn indicator override for minesweeper */
+    .turn-indicator.my-turn {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      animation: pulse-glow 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
+      50% { box-shadow: 0 0 12px 4px rgba(99,102,241,0.25); }
+    }
+
+    /* ── Board ── */
+    .ms-board-wrapper {
+      overflow-x: auto;
+      display: flex;
+      justify-content: center;
+      padding: 0.5rem 0;
+    }
+
+    #minesweeper-board {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 3px;
+      width: min(520px, 90vw);
+      aspect-ratio: 1;
+      user-select: none;
+    }
+
+    .ms-cell {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(0.6rem, 2vw, 0.85rem);
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: default;
+      transition: background 0.15s ease, transform 0.1s ease;
+      position: relative;
+    }
+    [data-theme="light"] .ms-cell {
+      background: rgba(99,102,241,0.06);
+      border-color: rgba(0,0,0,0.1);
+    }
+
+    .ms-cell.clickable {
+      cursor: pointer;
+    }
+    .ms-cell.clickable:hover {
+      background: rgba(99,102,241,0.2);
+      border-color: rgba(99,102,241,0.4);
+      transform: scale(0.95);
+    }
+
+    .ms-cell.revealed {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.04);
+      cursor: default;
+    }
+    [data-theme="light"] .ms-cell.revealed {
+      background: rgba(0,0,0,0.04);
+      border-color: rgba(0,0,0,0.05);
+    }
+
+    .ms-cell.mine {
+      background: rgba(239,68,68,0.2);
+      border-color: rgba(239,68,68,0.4);
+      font-size: clamp(0.7rem, 2.5vw, 1rem);
+    }
+
+    .ms-cell.flagged {
+      background: rgba(245,158,11,0.12);
+      border-color: rgba(245,158,11,0.3);
+      font-size: clamp(0.7rem, 2.5vw, 1rem);
+    }
+
+    /* Number colors */
+    .ms-cell.num-1 { color: #3b82f6; }
+    .ms-cell.num-2 { color: #22c55e; }
+    .ms-cell.num-3 { color: #ef4444; }
+    .ms-cell.num-4 { color: #7c3aed; }
+    .ms-cell.num-5 { color: #dc2626; }
+    .ms-cell.num-6 { color: #0891b2; }
+    .ms-cell.num-7 { color: #111827; }
+    .ms-cell.num-8 { color: #6b7280; }
+
+    /* Animations */
+    .ms-cell.just-revealed {
+      animation: reveal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    @keyframes reveal-pop {
+      0% { transform: scale(0.7); opacity: 0.4; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .ms-cell.exploded {
+      animation: explode 0.6s ease-out forwards;
+    }
+    @keyframes explode {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.6); background: rgba(239,68,68,0.7); }
+      100% { transform: scale(1); }
+    }
+
+    /* Eliminated banner */
+    .eliminated-banner {
+      display: none;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.9rem 1.2rem;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 0.75rem;
+      margin-bottom: 1rem;
+      color: #ef4444;
+      font-weight: 600;
+      animation: slide-in 0.4s ease;
+    }
+    .eliminated-banner i { font-size: 1.3rem; }
+
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* History panel */
+    .ms-history-wrap {
+      margin-top: 1rem;
+    }
+    .ms-history-wrap h3 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    /* Right-click hint */
+    .ms-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 0.5rem;
+    }
+    .ms-hint i { color: var(--accent-primary); }
+
+    /* Game over screen */
+    .gameover-icon {
+      font-size: 3.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Lobby max-width override */
+    .ms-lobby-card { max-width: 480px; }
+  </style>
+</head>
+<body class="game-page ms-page">
+
+  <!-- Connecting Overlay -->
+  <div id="connectingOverlay" class="connecting-overlay">
+    <div class="spinner"></div>
+    <p>Đang kết nối đến server...</p>
+  </div>
+
+  <nav id="navbar" class="scrolled">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">iyu<span class="logo-dot">.</span></a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="about.html" class="nav-link" data-vi="Về tôi" data-en="About">Về tôi</a></li>
+        <li><a href="experience.html" class="nav-link" data-vi="Kinh nghiệm" data-en="Experience">Kinh nghiệm</a></li>
+        <li><a href="skills.html" class="nav-link" data-vi="Kỹ năng" data-en="Skills">Kỹ năng</a></li>
+        <li><a href="collection.html" class="nav-link active" data-vi="Bộ sưu tập" data-en="Collection">Bộ sưu tập</a></li>
+        <li><a href="contact.html" class="nav-link" data-vi="Liên hệ" data-en="Contact">Liên hệ</a></li>
+      </ul>
+      <div class="nav-controls">
+        <button id="langToggle" class="nav-ctrl-btn" title="Switch language">EN</button>
+        <button id="themeToggle" class="nav-ctrl-btn" title="Toggle theme"><i class="fa-solid fa-sun"></i></button>
+        <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    <section class="game-section">
+      <div class="container game-container" style="display:flex; flex-direction:column; align-items:center;">
+
+        <!-- Header -->
+        <div class="game-header text-center">
+          <span class="section-tag">Online Multiplayer</span>
+          <h1 class="section-title" data-vi="💣 Dò Mìn" data-en="💣 Minesweeper">💣 Dò Mìn</h1>
+          <p class="game-subtitle" data-vi="Đổi lượt mở ô – ai trúng mìn bị loại! Người cuối cùng sống sót thắng." data-en="Take turns revealing cells – hit a mine and you're out! Last one standing wins.">
+            Đổi lượt mở ô – ai trúng mìn bị loại! Người cuối cùng sống sót thắng.
+          </p>
+          <button class="btn-rules mt-2" onclick="document.getElementById('rulesModal').classList.add('active')">
+            <i class="fa-solid fa-circle-question"></i> <span>Luật chơi</span>
+          </button>
+        </div>
+
+        <!-- GAME CARD -->
+        <div class="game-card ms-lobby-card">
+
+          <!-- 1. Lobby Screen -->
+          <div id="lobbyScreen" class="game-screen active">
+
+            <!-- Name step -->
+            <div id="lobbyNameStep">
+              <h2 class="screen-title">Tham gia Multiplayer</h2>
+              <div class="input-group">
+                <label for="onlineName">Tên hiển thị của bạn:</label>
+                <input type="text" id="onlineName" class="game-input" placeholder="Ví dụ: Player123" maxlength="15" />
+              </div>
+              <div class="online-actions">
+                <button class="game-btn btn-primary" id="btnCreateRoom">
+                  <i class="fa-solid fa-plus"></i> Tạo Phòng Mới
+                </button>
+                <div class="divider"><span>HOẶC</span></div>
+                <button class="game-btn btn-outline" id="btnShowJoin">
+                  <i class="fa-solid fa-right-to-bracket"></i> Tham Gia Bằng Mã
+                </button>
+              </div>
+              <div class="join-room-group" id="joinRoomGroup">
+                <input type="text" class="game-input" id="roomCodeInput" placeholder="Nhập mã phòng (vd: ABCD12)" maxlength="6" style="text-transform: uppercase;" />
+                <button class="game-btn btn-primary" id="btnJoinRoom">
+                  <span>Vào Phòng</span>
+                </button>
+              </div>
+              <div id="lobbyStatus" class="status-message"></div>
+            </div>
+
+            <!-- Wait step -->
+            <div id="lobbyWaitStep" style="display:none;">
+              <h2 class="screen-title">Phòng Chờ</h2>
+              <div class="room-info-card">
+                <p>Mã phòng của bạn:</p>
+                <div class="room-code-display" id="roomCodeDisplay">
+                  <span id="roomCodeText">------</span>
+                  <button class="copy-btn" id="btnCopyCode" title="Copy"><i class="fa-regular fa-copy"></i></button>
+                </div>
+                <p class="small-text mt-1 text-muted">Gửi mã này cho bạn bè để họ tham gia.</p>
+              </div>
+
+              <div class="lobby-players">
+                <h3>Người Chơi (<span id="playerCountLabel">0</span>/4)</h3>
+                <ul id="lobbyPlayerList"></ul>
+              </div>
+
+              <div id="lobbyWaitStatus" class="status-message"></div>
+
+              <div class="button-group mt-3" style="gap:1rem; flex-wrap: wrap;">
+                <button class="game-btn btn-outline" id="btnLeaveLobby" style="flex:1;">
+                  <i class="fa-solid fa-arrow-left"></i> Rời Phòng
+                </button>
+                <button class="game-btn btn-primary" id="btnStartOnline" disabled style="flex:1;">
+                  Bắt Đầu Game <i class="fa-solid fa-play"></i>
+                </button>
+                <div id="waitHostMessage" style="display:none; width:100%; text-align:center; padding: 12px; background: rgba(99,102,241,0.1); border-radius: 8px; border: 1px dashed rgba(99,102,241,0.3); color: var(--text-primary); font-weight: 500;">
+                  <i class="fa-solid fa-hourglass-half fa-spin" style="color: var(--accent-primary);"></i>
+                  Đang chờ chủ phòng bắt đầu...
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- end lobby screen -->
+
+        </div>
+        <!-- end game-card lobby -->
+
+        <!-- PLAY SCREEN – wider card -->
+        <div id="playScreen" class="game-screen" style="width: 100%; max-width: 600px;">
+
+          <!-- Eliminated banner -->
+          <div id="eliminatedBanner" class="eliminated-banner">
+            <i class="fa-solid fa-skull-crossbones"></i>
+            <span class="elim-text">💥 Bạn đã trúng mìn và bị loại! Hãy xem phần còn lại của trận đấu...</span>
+          </div>
+
+          <!-- Turn & mine info -->
+          <div class="ms-info-bar">
+            <div class="ms-mine-counter">
+              <i class="fa-solid fa-bomb"></i>
+              <span id="mineCounter">15</span>
+            </div>
+            <div class="turn-indicator" id="turnIndicator">⏳ Chờ bắt đầu...</div>
+          </div>
+
+          <!-- Alive players -->
+          <div class="alive-players-bar" id="aliveList"></div>
+
+          <!-- Board -->
+          <div class="ms-board-wrapper" style="margin-top: 0.8rem;">
+            <div id="minesweeper-board"></div>
+          </div>
+
+          <p class="ms-hint">
+            <i class="fa-solid fa-hand-pointer"></i> Click để mở ô &nbsp;|&nbsp;
+            <i class="fa-solid fa-flag"></i> Click phải để đặt cờ
+          </p>
+
+          <!-- History -->
+          <div class="ms-history-wrap">
+            <h3><i class="fa-solid fa-scroll"></i> Nhật ký</h3>
+            <div class="history-log" id="historyLog"></div>
+          </div>
+        </div>
+
+        <!-- GAME OVER SCREEN -->
+        <div id="gameOverScreen" class="game-screen text-center" style="width: 100%; max-width: 500px;">
+          <div class="game-card">
+            <div class="gameover-icon">💣</div>
+            <h2 class="screen-title mb-2 text-gradient">Kết Thúc!</h2>
+            <div class="winner-box p-3 mb-3" style="background: rgba(99,102,241, 0.1); border-radius: 12px; border: 1px solid var(--accent-primary);">
+              <p id="winnerMessage" style="color: var(--accent-primary); font-size: 1.3rem; margin: 0; line-height: 1.5;"></p>
+            </div>
+            <button class="game-btn btn-primary mt-2" id="btnRestart">
+              <i class="fa-solid fa-rotate-right"></i> Chơi lại
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Bottom Nav -->
+    <div class="page-nav-bar">
+      <div class="container">
+        <a href="games.html" class="page-nav-btn btn-ghost"><i class="fa-solid fa-arrow-left"></i> Trò chơi</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules Modal -->
+  <div class="game-modal-overlay" id="rulesModal">
+    <div class="game-modal-content">
+      <button class="game-modal-close" onclick="document.getElementById('rulesModal').classList.remove('active')"><i class="fa-solid fa-times"></i></button>
+      <h2 class="game-modal-title">💣 Luật Chơi Dò Mìn</h2>
+      <div class="game-rules-list">
+        <ul>
+          <li><b>Số người:</b> 2–4 người chơi trực tuyến.</li>
+          <li><b>Bàn cờ:</b> Lưới 10×10, ẩn chứa <b>15 quả mìn</b>.</li>
+          <li><b>Mục tiêu:</b> Không trúng mìn và là người sống sót cuối cùng!</li>
+          <li><b>Lượt chơi:</b> Mỗi lượt, một người chọn một ô để mở.</li>
+          <li><b>Trúng mìn 💥:</b> Người bấm vào mìn bị <b>loại khỏi trận</b>. Họ vẫn có thể xem trận đấu tiếp tục.</li>
+          <li><b>Ô an toàn:</b> Số trong ô cho biết có bao nhiêu mìn xung quanh (1–8 ô lân cận). Ô trống không có mìn lân cận và tự động mở ra.</li>
+          <li><b>Đặt cờ 🚩:</b> <i>Click phải</i> (hoặc giữ lâu trên mobile) để đánh dấu ô nghi là mìn. Mọi người đều thấy cờ.</li>
+          <li><b>Điều kiện thắng:</b>
+            <ul>
+              <li>🏆 <b>Còn sống:</b> Người cuối cùng không trúng mìn thắng.</li>
+              <li>✅ <b>Hoàn thành:</b> Nếu ai mở hết tất cả ô an toàn, họ thắng ngay lập tức!</li>
+            </ul>
+          </li>
+        </ul>
+        <div style="text-align: center; margin-top: 2rem;">
+          <button class="game-btn" onclick="document.getElementById('rulesModal').classList.remove('active')" style="display: inline-block; width: auto; padding: 0.8rem 2.5rem;">
+            <i class="fa-solid fa-check"></i> Đã hiểu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer mt-auto">
+    <div class="container">
+      <p>© 2026 <strong>Điền Nguyễn (Iyu)</strong>. Được xây dựng với <i class="fa-solid fa-heart" style="color:#6366f1;"></i></p>
+    </div>
+  </footer>
+
+  <script src="assets/js/shared/preferences/theme.js"></script>
+  <script src="assets/js/shared/preferences/language.js"></script>
+  <script src="assets/js/shared/preferences/boot.js"></script>
+  <script src="assets/js/shared/site/navbar.js"></script>
+  <script src="assets/js/shared/site/mobile-menu.js"></script>
+  <script src="assets/js/shared/site/observers.js"></script>
+  <script src="assets/js/shared/site/effects.js"></script>
+  <script src="assets/js/shared/site/transitions.js"></script>
+  <script src="assets/js/shared/site/boot.js"></script>
+  <script type="module" src="assets/js/games/minesweeper/main.js"></script>
+  <script>
+    (function() {
+      const rulesModal = document.getElementById('rulesModal');
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && rulesModal && rulesModal.classList.contains('active')) {
+          rulesModal.classList.remove('active');
+        }
+      });
+
+      // Long press for mobile flagging
+      let pressTimer = null;
+      document.getElementById('minesweeper-board').addEventListener('touchstart', (e) => {
+        const cell = e.target.closest('.ms-cell');
+        if (!cell) return;
+        pressTimer = setTimeout(() => {
+          cell.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+        }, 500);
+      }, { passive: true });
+      document.getElementById('minesweeper-board').addEventListener('touchend', () => {
+        clearTimeout(pressTimer);
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -433,6 +433,9 @@
 
 /* Game Modal Styles */
 .game-modal-overlay {
+  --primary-color: var(--accent-primary);
+  --text-color: var(--text-primary);
+  --bg-color: var(--bg-primary);
   display: none;
   position: fixed;
   inset: 0;
