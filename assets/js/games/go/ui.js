@@ -1,4 +1,4 @@
-import { BOARD_SIZE, TURN_DURATION } from './constants.js';
+import { BOARD_SIZE, PLAYER_TIME } from './constants.js';
 
 export function createGoUi({ state, elements }) {
 
@@ -288,33 +288,39 @@ export function createGoUi({ state, elements }) {
   }
 
   // ── Timer UI ──────────────────────────────────────────────
-  let timerInterval = null;
+  function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.max(0, seconds) % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
 
-  function startClientTimer(seconds) {
-    stopClientTimer();
-    state.timeLeft = seconds;
-    renderTimer(seconds);
+  function updatePlayerTimes(playerTimes, currentTurnIndex) {
+    if (!playerTimes) return;
+
+    // Update text displays
+    if (elements.blackTimeEl) elements.blackTimeEl.textContent = formatTime(playerTimes[0]);
+    if (elements.whiteTimeEl) elements.whiteTimeEl.textContent = formatTime(playerTimes[1]);
+
+    // Highlight active player
+    if (elements.blackTimeEl) elements.blackTimeEl.classList.toggle('time-active', currentTurnIndex === 0);
+    if (elements.whiteTimeEl) elements.whiteTimeEl.classList.toggle('time-active', currentTurnIndex === 1);
+    if (elements.blackTimeEl) elements.blackTimeEl.classList.toggle('time-low', playerTimes[0] <= 30);
+    if (elements.whiteTimeEl) elements.whiteTimeEl.classList.toggle('time-low', playerTimes[1] <= 30);
+
+    // Ring shows current player's remaining time
+    const currentTime = Math.max(0, playerTimes[currentTurnIndex]);
+    const pct = currentTime / PLAYER_TIME;
+    const r = 18;
+    const circ = 2 * Math.PI * r;
+    elements.timerRing.style.strokeDasharray = `${circ * pct} ${circ}`;
+    elements.timerRing.style.stroke = currentTime <= 30
+      ? '#ef4444'
+      : currentTime <= 60 ? '#f59e0b' : 'var(--primary-color)';
+    elements.timerText.textContent = formatTime(currentTime);
   }
 
   function stopClientTimer() {
-    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-  }
-
-  function renderTimer(seconds) {
-    const pct = seconds / TURN_DURATION;
-    elements.timerText.textContent = seconds;
-
-    // SVG ring progress
-    const r = 18;
-    const circ = 2 * Math.PI * r;
-    const dash = circ * pct;
-    elements.timerRing.style.strokeDasharray = `${dash} ${circ}`;
-    elements.timerRing.style.stroke = seconds <= 5 ? '#ef4444' : seconds <= 10 ? '#f59e0b' : 'var(--primary-color)';
-  }
-
-  function tickTimer(timeLeft) {
-    state.timeLeft = timeLeft;
-    renderTimer(timeLeft);
+    // No-op: timer is fully server-driven via go-timer-tick events
   }
 
   // ── Captures & Score ──────────────────────────────────────
@@ -409,7 +415,7 @@ export function createGoUi({ state, elements }) {
     resetLobbyUI, updateLobbyPlayerList, syncHostControls,
     buildBoard, placeStoneUI, removeStoneUI, clearLastMoveMarkers,
     updateTurnUI,
-    startClientTimer, stopClientTimer, tickTimer,
+    updatePlayerTimes, stopClientTimer,
     updateCaptures,
     addMoveLog, addPassLog, prependSystemLog,
     showWinner

@@ -31,6 +31,8 @@ export function getGoElements() {
     goBoardSvg: document.getElementById('goBoardSvg'),
     blackCaptureCount: document.getElementById('blackCaptureCount'),
     whiteCaptureCount: document.getElementById('whiteCaptureCount'),
+    blackTimeEl: document.getElementById('blackTime'),
+    whiteTimeEl: document.getElementById('whiteTime'),
     blackScoreEl: document.getElementById('blackScore'),
     whiteScoreEl: document.getElementById('whiteScore'),
     btnPass: document.getElementById('btnPass'),

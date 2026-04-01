@@ -1,5 +1,5 @@
 const BOARD_SIZE = 9;
-const TURN_DURATION = 20; // seconds
+const PLAYER_TIME = 180; // 3 minutes per player
 const KOMI = 6.5;
 
 // ───────────────────────── Helpers ─────────────────────────
@@ -101,16 +101,18 @@ function clearGoTimer(room) {
 
 function startGoTimer(room, io, roomCode) {
   clearGoTimer(room);
-  room.goTimeLeft = TURN_DURATION;
 
   room.goTimerInterval = setInterval(() => {
-    room.goTimeLeft--;
-    io.to(roomCode).emit('go-timer-tick', { timeLeft: room.goTimeLeft });
+    const idx = room.goCurrentTurnIndex;
+    room.goPlayerTimes[idx]--;
+    io.to(roomCode).emit('go-timer-tick', {
+      playerTimes: [...room.goPlayerTimes],
+      currentTurnIndex: idx
+    });
 
-    if (room.goTimeLeft <= 0) {
+    if (room.goPlayerTimes[idx] <= 0) {
       clearGoTimer(room);
-      // Auto-pass for the current player
-      const currentPlayer = room.players[room.goCurrentTurnIndex];
+      const currentPlayer = room.players[idx];
       autoPassGo(room, io, roomCode, currentPlayer);
     }
   }, 1000);
@@ -128,6 +130,7 @@ function autoPassGo(room, io, roomCode, player) {
     currentTurn: nextPlayer.name,
     currentTurnIndex: room.goCurrentTurnIndex,
     consecutivePasses: room.goConsecutivePasses,
+    playerTimes: [...room.goPlayerTimes],
     autoPass: true
   });
 
@@ -146,7 +149,8 @@ function startGoGame(room, io, roomCode) {
   room.goPreviousBoardHash = null;
   room.goCurrentTurnIndex = 0;
   room.goConsecutivePasses = 0;
-  room.goCaptures = { black: 0, white: 0 }; // black = player index 0, white = index 1
+  room.goCaptures = { black: 0, white: 0 };
+  room.goPlayerTimes = [PLAYER_TIME, PLAYER_TIME];
   room.started = true;
   room.history = [];
 
@@ -154,7 +158,8 @@ function startGoGame(room, io, roomCode) {
     currentTurn: room.players[0].name,
     currentTurnIndex: 0,
     players: room.players.map(p => p.name),
-    boardSize: BOARD_SIZE
+    boardSize: BOARD_SIZE,
+    playerTimes: [PLAYER_TIME, PLAYER_TIME]
   });
 
   console.log(`[Game] Go Room ${roomCode} started.`);
@@ -224,7 +229,8 @@ function handleGoMove(room, socket, io, roomCode, { row, col }) {
     currentTurnIndex: room.goCurrentTurnIndex,
     captures: room.goCaptures,
     capturedCount: captured,
-    removedStones
+    removedStones,
+    playerTimes: [...room.goPlayerTimes]
   });
 
   startGoTimer(room, io, roomCode);
@@ -248,7 +254,8 @@ function handleGoPass(room, socket, io, roomCode) {
     playerName: currentPlayer.name,
     currentTurn: nextPlayer.name,
     currentTurnIndex: room.goCurrentTurnIndex,
-    consecutivePasses: room.goConsecutivePasses
+    consecutivePasses: room.goConsecutivePasses,
+    playerTimes: [...room.goPlayerTimes]
   });
 
   if (room.goConsecutivePasses >= 2) {
@@ -367,6 +374,7 @@ function resetGoGame(room) {
   room.goCurrentTurnIndex = 0;
   room.goConsecutivePasses = 0;
   room.goCaptures = { black: 0, white: 0 };
+  room.goPlayerTimes = [PLAYER_TIME, PLAYER_TIME];
   room.started = false;
   room.history = [];
 }

@@ -1,4 +1,4 @@
-import { SOCKET_URL, TURN_DURATION } from './constants.js';
+import { SOCKET_URL, PLAYER_TIME } from './constants.js';
 
 export function createGoOnline({ state, elements, ui, onCellClick }) {
 
@@ -82,7 +82,7 @@ export function createGoOnline({ state, elements, ui, onCellClick }) {
     });
 
     // ── Game Start ───────────────────────────────────────────
-    state.socket.on('go-start', ({ currentTurn, currentTurnIndex, players }) => {
+    state.socket.on('go-start', ({ currentTurn, currentTurnIndex, players, playerTimes }) => {
       state.onlinePlayers = players;
       state.currentTurnName = currentTurn;
       state.isGameOver = false;
@@ -99,12 +99,12 @@ export function createGoOnline({ state, elements, ui, onCellClick }) {
       ui.buildBoard(onCellClick);
       ui.updateTurnUI(currentTurn);
       ui.updateCaptures(state.captures);
-      ui.startClientTimer(TURN_DURATION);
+      ui.updatePlayerTimes(playerTimes || [PLAYER_TIME, PLAYER_TIME], 0);
       ui.showScreen(elements.playScreen);
     });
 
     // ── Move Result ──────────────────────────────────────────
-    state.socket.on('go-result', ({ playerName, row, col, color, currentTurn, currentTurnIndex, captures, capturedCount, removedStones }) => {
+    state.socket.on('go-result', ({ playerName, row, col, color, currentTurn, currentTurnIndex, captures, capturedCount, removedStones, playerTimes }) => {
       // Remove captured stones from UI FIRST
       if (removedStones && removedStones.length > 0) {
         removedStones.forEach(([r, c]) => ui.removeStoneUI(r, c));
@@ -116,21 +116,21 @@ export function createGoOnline({ state, elements, ui, onCellClick }) {
       state.captures = captures;
       ui.updateCaptures(captures);
       ui.updateTurnUI(currentTurn);
-      ui.startClientTimer(TURN_DURATION);
+      ui.updatePlayerTimes(playerTimes, currentTurnIndex);
     });
 
     // ── Pass ─────────────────────────────────────────────────
-    state.socket.on('go-passed', ({ playerName, currentTurn, consecutivePasses, autoPass }) => {
+    state.socket.on('go-passed', ({ playerName, currentTurn, currentTurnIndex, consecutivePasses, autoPass, playerTimes }) => {
       ui.addPassLog(playerName, autoPass);
       state.currentTurnName = currentTurn;
       state.consecutivePasses = consecutivePasses;
       ui.updateTurnUI(currentTurn);
-      ui.startClientTimer(TURN_DURATION);
+      ui.updatePlayerTimes(playerTimes, currentTurnIndex);
     });
 
     // ── Timer sync ───────────────────────────────────────────
-    state.socket.on('go-timer-tick', ({ timeLeft }) => {
-      ui.tickTimer(timeLeft);
+    state.socket.on('go-timer-tick', ({ playerTimes, currentTurnIndex }) => {
+      ui.updatePlayerTimes(playerTimes, currentTurnIndex);
     });
 
     // ── Game Over ─────────────────────────────────────────────

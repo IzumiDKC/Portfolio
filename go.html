@@ -103,6 +103,36 @@
       color: var(--primary-color);
     }
 
+    .player-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0.6rem;
+      border-radius: 8px;
+      border: 1.5px solid transparent;
+      transition: color 0.3s, border-color 0.3s, background 0.3s;
+    }
+
+    .player-time.time-active {
+      color: var(--primary-color);
+      border-color: var(--primary-color);
+      background: rgba(var(--primary-rgb), 0.08);
+      animation: timePulse 1s ease-in-out infinite;
+    }
+
+    .player-time.time-low {
+      color: #ef4444 !important;
+      border-color: #ef4444 !important;
+      background: rgba(239, 68, 68, 0.08) !important;
+    }
+
+    @keyframes timePulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
     /* ── Timer Ring ── */
     .timer-wrap {
       display: flex;
@@ -263,8 +293,8 @@
         <div class="game-header text-center">
           <span class="section-tag" data-vi="Online Multiplayer" data-en="Online Multiplayer">Online Multiplayer</span>
           <h1 class="section-title" data-vi="Cờ Vây (Go)" data-en="Go (Igo / Weiqi)">Cờ Vây (Go)</h1>
-          <p class="game-subtitle" data-vi="Trò chơi chiến lược cổ điển 2 người. Bàn cờ 9×9 · Timer 20s mỗi lượt." data-en="Classic 2-player strategy game on a 9×9 board with a 20-second timer.">
-            Trò chơi chiến lược cổ điển 2 người. Bàn cờ 9×9 · Timer 20s mỗi lượt.
+          <p class="game-subtitle" data-vi="Trò chơi chiến lược cổ điển 2 người. Bàn cờ 9×9 · Mỗi người 3 phút." data-en="Classic 2-player strategy game on a 9×9 board. 3 minutes per player.">
+            Trò chơi chiến lược cổ điển 2 người. Bàn cờ 9×9 · Mỗi người 3 phút.
           </p>
           <button class="btn-rules mt-2" onclick="document.getElementById('rulesModal').classList.add('active')">
             <i class="fa-solid fa-circle-question"></i> <span data-vi="Luật chơi" data-en="Rules">Luật chơi</span>
@@ -347,6 +377,7 @@
                     <svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="#111" stroke="#555" stroke-width="1"/></svg>
                     <span data-vi="Đen" data-en="Black">Đen</span>
                   </div>
+                  <div id="blackTime" class="player-time">3:00</div>
                   <div class="go-captures-badge">
                     <i class="fa-solid fa-skull-crossbones" style="font-size:0.7rem;"></i>
                     <span id="blackCaptureCount">0</span>
@@ -363,11 +394,11 @@
                       <circle id="timerRing" cx="26" cy="26" r="18"
                         style="stroke-dasharray:113.1 113.1; transform:rotate(-90deg); transform-origin:26px 26px;"/>
                     </svg>
-                    <div class="timer-text-center">
-                      <span id="timerText">20</span>
+                    <div class="timer-text-center" style="font-size:0.72rem;">
+                      <span id="timerText">3:00</span>
                     </div>
                   </div>
-                  <div class="timer-label" data-vi="giây" data-en="sec">giây</div>
+                  <div class="timer-label" data-vi="còn lại" data-en="left">còn lại</div>
                 </div>
 
                 <!-- White player -->
@@ -376,6 +407,7 @@
                     <svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="#eee" stroke="#aaa" stroke-width="1"/></svg>
                     <span data-vi="Trắng" data-en="White">Trắng</span>
                   </div>
+                  <div id="whiteTime" class="player-time">3:00</div>
                   <div class="go-captures-badge">
                     <i class="fa-solid fa-skull-crossbones" style="font-size:0.7rem;"></i>
                     <span id="whiteCaptureCount">0</span>
@@ -449,7 +481,7 @@
           <li data-vi="<b>Bỏ lượt (Pass):</b> Người chơi có thể từ chối đặt quân. Hai lần bỏ lượt liên tiếp → kết thúc trận." data-en="<b>Pass:</b> A player may pass their turn. Two consecutive passes end the game."><b>Bỏ lượt:</b> Hai lần liên tiếp → kết thúc trận.</li>
           <li data-vi="<b>Đầu hàng:</b> Người chơi có thể nhấn 'Đầu hàng' để thua ngay lập tức." data-en="<b>Resign:</b> A player may resign at any time, conceding the game."><b>Đầu hàng:</b> Nhấn nút để thua ngay.</li>
           <li data-vi="<b>Tính điểm (Japanese):</b> Điểm = Lãnh thổ kiểm soát + Số quân đã bắt. Người Trắng nhận thêm 6.5 điểm Komi." data-en="<b>Scoring (Japanese):</b> Points = Controlled territory + Captures. White receives 6.5 komi points."><b>Tính điểm:</b> Lãnh thổ + Quân bắt. Trắng +6.5 điểm komi.</li>
-          <li data-vi="<b>Hẹn giờ:</b> Mỗi lượt có <b>20 giây</b>. Hết giờ → tự động bỏ lượt." data-en="<b>Timer:</b> Each turn has <b>20 seconds</b>. Time up → automatic pass."><b>Hẹn giờ:</b> 20 giây/lượt. Hết giờ → tự động bỏ lượt.</li>
+          <li data-vi="<b>Hẹn giờ:</b> Mỗi người có <b>3 phút</b> tổng cộng. Đồng hồ chỉ chạy khi đến lượt bạn. Hết giờ → tự động bỏ lượt." data-en="<b>Timer:</b> Each player has <b>3 minutes</b> total. Clock only runs during your turn. Time up → automatic pass."><b>Hẹn giờ:</b> Mỗi người có 3 phút. Hết giờ → tự động bỏ lượt.</li>
         </ul>
         <div style="text-align:center;margin-top:2rem;">
           <button class="game-btn btn-primary" onclick="document.getElementById('rulesModal').classList.remove('active')" style="display:inline-block;width:auto;padding:0.8rem 2.5rem;">
