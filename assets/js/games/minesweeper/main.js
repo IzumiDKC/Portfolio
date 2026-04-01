@@ -17,6 +17,7 @@ let isMyTurn = false;
 let board = [];         // 2D client board state
 let gameOver = false;
 let myAlive = true;
+let localFlags = new Set(); // private flags – only visible to this player (key: "r,c")
 
 // ── DOM refs ─────────────────────────────────────────────────
 const connectingOverlay = document.getElementById('connectingOverlay');
@@ -111,6 +112,7 @@ function connectSocket() {
     gameOver = false;
     myAlive = true;
     isMyTurn = false;
+    localFlags.clear();
     clearBoard();
     if (eliminatedBanner) eliminatedBanner.style.display = 'none';
     const gob = document.getElementById('gameOverBanner');
@@ -139,6 +141,7 @@ function connectSocket() {
     board = data.board;
     gameOver = false;
     myAlive = true;
+    localFlags.clear();
     if (eliminatedBanner) eliminatedBanner.style.display = 'none';
     clearHistory();
     renderBoard(board);
@@ -158,13 +161,7 @@ function connectSocket() {
     animateReveal(data.revealedCells);
   });
 
-  socket.on('minesweeper-flagged', (data) => {
-    if (board[data.row] && board[data.row][data.col] !== undefined) {
-      board[data.row][data.col].flagged = data.flagged;
-    }
-    renderBoard(board);
-    if (mineCounter) mineCounter.textContent = data.minesRemaining;
-  });
+  // minesweeper-flagged intentionally removed – flags are local-only per player
 
   socket.on('minesweeper-eliminated', (data) => {
     board = data.board;
@@ -244,6 +241,8 @@ function renderBoard(boardData, revealAll = false) {
   for (let r = 0; r < BOARD_SIZE; r++) {
     for (let c = 0; c < BOARD_SIZE; c++) {
       const cell = boardData[r][c];
+      const key = `${r},${c}`;
+      const isFlagged = localFlags.has(key);
       const el = document.createElement('div');
       el.className = 'ms-cell';
       el.dataset.row = r;
@@ -255,19 +254,20 @@ function renderBoard(boardData, revealAll = false) {
           el.classList.add('mine');
           el.innerHTML = '💣';
         } else if (cell.adjacentMines > 0) {
-          el.classList.add(`num-${cell.adjacentMines}`)
+          el.classList.add(`num-${cell.adjacentMines}`);
           el.textContent = cell.adjacentMines;
         }
       } else if (revealAll && cell.mine) {
         // Game over: reveal hidden mines
         el.classList.add('revealed', 'mine', 'mine-hidden');
         el.innerHTML = '💣';
-      } else if (cell.flagged) {
+      } else if (isFlagged) {
+        // Local-only flag – only this player sees it
         el.classList.add('flagged');
         el.innerHTML = '🚩';
       }
 
-      if (!gameOver && myAlive && isMyTurn && !cell.revealed && !cell.flagged) {
+      if (!gameOver && myAlive && isMyTurn && !cell.revealed && !isFlagged) {
         el.classList.add('clickable');
       }
 
@@ -361,7 +361,8 @@ function handleCellClick(e) {
   const row = parseInt(e.currentTarget.dataset.row);
   const col = parseInt(e.currentTarget.dataset.col);
   if (board[row] && board[row][col].revealed) return;
-  if (board[row] && board[row][col].flagged) return;
+  const key = `${row},${col}`;
+  if (localFlags.has(key)) return; // blocked by own flag
   socket.emit('minesweeper-reveal', { row, col });
 }
 
@@ -371,7 +372,14 @@ function handleCellRightClick(e) {
   const row = parseInt(e.currentTarget.dataset.row);
   const col = parseInt(e.currentTarget.dataset.col);
   if (board[row] && board[row][col].revealed) return;
-  socket.emit('minesweeper-flag', { row, col });
+  // Toggle local flag – no server emit needed
+  const key = `${row},${col}`;
+  if (localFlags.has(key)) {
+    localFlags.delete(key);
+  } else {
+    localFlags.add(key);
+  }
+  renderBoard(board);
 }
 
 // ── Info panel ──────────────────────────────────────────────
