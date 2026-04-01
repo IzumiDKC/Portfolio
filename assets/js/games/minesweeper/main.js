@@ -113,6 +113,8 @@ function connectSocket() {
     isMyTurn = false;
     clearBoard();
     if (eliminatedBanner) eliminatedBanner.style.display = 'none';
+    const gob = document.getElementById('gameOverBanner');
+    if (gob) gob.remove();
     lobbyNameStep.style.display = 'none';
     lobbyWaitStep.style.display = 'block';
     updateLobbyPlayers(data.players);
@@ -186,21 +188,25 @@ function connectSocket() {
 
   socket.on('minesweeper-over', (data) => {
     gameOver = true;
+    isMyTurn = false;
     board = data.board;
+    // Render toàn bộ sân gồm cả bom ẩn
     renderBoard(board, true);
 
+    // Xây nội dung banner
+    let msg = '';
     if (data.winner === myName) {
-      winnerMessage.innerHTML = `🏆 <strong>Bạn thắng!</strong><br><small>Tất cả mìn đã được tìm thấy!</small>`;
+      msg = `🏆 <strong>Bạn thắng!</strong> ${data.reason === 'all-clear' ? 'Đã dọn sạch tất cả ô an toàn!' : 'Đối thủ tʼrúng mìn hết rồi!'}`;
     } else if (data.reason === 'all-clear') {
-      winnerMessage.innerHTML = `🎉 <strong>${data.winner} chiến thắng!</strong><br><small>Đã dọn sạch tất cả ô mìn!</small>`;
+      msg = `🎉 <strong>${data.winner} chiến thắng!</strong> Đã dọn sạch tất cả ô mìn!`;
     } else if (data.reason === 'opponent-left') {
-      winnerMessage.innerHTML = `🚪 <strong>Đối thủ đã thoát!</strong><br><small>${data.winner} chiến thắng mặc định.</small>`;
+      msg = `🚪 <strong>Đối thủ đã thoát!</strong> ${data.winner} chiến thắng mặc định.`;
     } else {
-      winnerMessage.innerHTML = `💣 <strong>${data.winner} chiến thắng!</strong><br><small>${data.loser} đã trúng mìn!</small>`;
+      msg = `💣 <strong>${data.winner} chiến thắng!</strong> ${data.loser ? data.loser + ' đã trúng mìn!' : ''}`;
     }
 
-    btnRestart.style.display = isHost ? '' : 'none';
-    showScreen('gameOver');
+    // Hiển thị banner kết quả trên play screen (không chuyển màn hình)
+    showGameOverBanner(msg);
   });
 
   socket.on('not-your-turn', () => {
@@ -249,9 +255,13 @@ function renderBoard(boardData, revealAll = false) {
           el.classList.add('mine');
           el.innerHTML = '💣';
         } else if (cell.adjacentMines > 0) {
-          el.classList.add(`num-${cell.adjacentMines}`);
+          el.classList.add(`num-${cell.adjacentMines}`)
           el.textContent = cell.adjacentMines;
         }
+      } else if (revealAll && cell.mine) {
+        // Game over: reveal hidden mines
+        el.classList.add('revealed', 'mine', 'mine-hidden');
+        el.innerHTML = '💣';
       } else if (cell.flagged) {
         el.classList.add('flagged');
         el.innerHTML = '🚩';
@@ -304,6 +314,45 @@ function triggerExplosion(row, col) {
     el.classList.add('exploded');
     setTimeout(() => el && el.classList.remove('exploded'), 1000);
   }
+}
+
+// ── Game-over banner (shown in play screen) ───────────────────
+function showGameOverBanner(htmlMsg) {
+  // Remove old banner if exists
+  const old = document.getElementById('gameOverBanner');
+  if (old) old.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'gameOverBanner';
+  banner.className = 'game-over-banner';
+  banner.innerHTML = `
+    <div class="gob-content">
+      <p class="gob-msg">${htmlMsg}</p>
+      <p class="gob-sub">Toàn bộ sân đã được lộ bên dưới 👇</p>
+      ${isHost ? `<button class="game-btn btn-primary gob-restart" id="gobRestart"><i class="fa-solid fa-rotate-right"></i> Chơi lại</button>` : ''}
+    </div>
+  `;
+
+  // Insert above the board wrapper
+  const boardWrapper = document.querySelector('.ms-board-wrapper');
+  boardWrapper.parentNode.insertBefore(banner, boardWrapper);
+
+  if (isHost) {
+    document.getElementById('gobRestart').addEventListener('click', () => {
+      socket.emit('play-again');
+    });
+  }
+
+  // Hide eliminated banner so game-over banner is the only notice
+  if (eliminatedBanner) eliminatedBanner.style.display = 'none';
+
+  // Animate mines reveal staggered
+  Array.from(msBoard.children).forEach((el, i) => {
+    if (el.classList.contains('mine-hidden')) {
+      el.style.animationDelay = `${i * 0.015}s`;
+      el.classList.add('mine-reveal-anim');
+    }
+  });
 }
 
 // ── Interaction ────────────────────────────────────────────────

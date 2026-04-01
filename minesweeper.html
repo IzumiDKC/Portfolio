@@ -224,6 +224,49 @@
 
     /* Lobby max-width override */
     .ms-lobby-card { max-width: 480px; }
+
+    /* ── Game-over banner (inline on play screen) ── */
+    .game-over-banner {
+      border-radius: 1rem;
+      background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.18));
+      border: 1.5px solid rgba(99,102,241,0.45);
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 1rem;
+      animation: gob-slide-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      text-align: center;
+    }
+    .gob-content { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+    .gob-msg {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0;
+    }
+    .gob-sub {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+    .gob-restart { margin-top: 0.5rem; width: auto; padding: 0.55rem 1.8rem; }
+    @keyframes gob-slide-in {
+      from { opacity: 0; transform: translateY(-14px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Hidden mines revealed at end – different shade to distinguish from exploded ones */
+    .ms-cell.mine-hidden {
+      background: rgba(168,85,247,0.22) !important;
+      border-color: rgba(168,85,247,0.5) !important;
+      opacity: 0;
+    }
+    @keyframes mine-pop {
+      0%   { opacity: 0; transform: scale(0.5); }
+      70%  { opacity: 1; transform: scale(1.15); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .ms-cell.mine-reveal-anim {
+      animation: mine-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
   </style>
 </head>
 <body class="game-page ms-page">
