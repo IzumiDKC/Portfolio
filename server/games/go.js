@@ -103,8 +103,17 @@ function startGoTimer(room, io, roomCode) {
   clearGoTimer(room);
 
   room.goTimerInterval = setInterval(() => {
+    if (!room.started) {
+      clearGoTimer(room);
+      return;
+    }
+
     const idx = room.goCurrentTurnIndex;
     room.goPlayerTimes[idx]--;
+
+    // Clamp to 0 so client never shows negative
+    if (room.goPlayerTimes[idx] < 0) room.goPlayerTimes[idx] = 0;
+
     io.to(roomCode).emit('go-timer-tick', {
       playerTimes: [...room.goPlayerTimes],
       currentTurnIndex: idx
@@ -112,34 +121,17 @@ function startGoTimer(room, io, roomCode) {
 
     if (room.goPlayerTimes[idx] <= 0) {
       clearGoTimer(room);
-      const currentPlayer = room.players[idx];
-      autoPassGo(room, io, roomCode, currentPlayer);
+      // Player loses by timeout (standard Go rule)
+      const loser = room.players[idx];
+      const winner = room.players[1 - idx];
+      io.to(roomCode).emit('go-over', {
+        winner: winner.name,
+        loser: loser.name,
+        reason: 'timeout'
+      });
+      room.started = false;
     }
   }, 1000);
-}
-
-function autoPassGo(room, io, roomCode, player) {
-  if (!room || !room.started) return;
-
-  room.goConsecutivePasses++;
-  room.goCurrentTurnIndex = (room.goCurrentTurnIndex + 1) % 2;
-  const nextPlayer = room.players[room.goCurrentTurnIndex];
-
-  io.to(roomCode).emit('go-passed', {
-    playerName: player.name,
-    currentTurn: nextPlayer.name,
-    currentTurnIndex: room.goCurrentTurnIndex,
-    consecutivePasses: room.goConsecutivePasses,
-    playerTimes: [...room.goPlayerTimes],
-    autoPass: true
-  });
-
-  if (room.goConsecutivePasses >= 2) {
-    endGoGame(room, io, roomCode);
-    return;
-  }
-
-  startGoTimer(room, io, roomCode);
 }
 
 // ───────────────────────── Game Logic ─────────────────────────

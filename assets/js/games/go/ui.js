@@ -289,8 +289,9 @@ export function createGoUi({ state, elements }) {
 
   // ── Timer UI ──────────────────────────────────────────────
   function formatTime(seconds) {
-    const m = Math.floor(seconds / 60);
-    const s = Math.max(0, seconds) % 60;
+    const clamped = Math.max(0, seconds);
+    const m = Math.floor(clamped / 60);
+    const s = clamped % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
@@ -361,7 +362,7 @@ export function createGoUi({ state, elements }) {
   }
 
   // ── Game Over ─────────────────────────────────────────────
-  function showWinner({ winner, isDraw, reason, blackScore, whiteScore, blackPlayer, whitePlayer }) {
+  function showWinner({ winner, isDraw, reason, blackScore, whiteScore, blackPlayer, whitePlayer, loser }) {
     stopClientTimer();
     const lang = getLang();
     let winMsg = '';
@@ -370,6 +371,10 @@ export function createGoUi({ state, elements }) {
       winMsg = lang === 'en' ? `🏆 ${winner} wins! (Opponent left)` : `🏆 ${winner} thắng! (Đối thủ rời đi)`;
     } else if (reason === 'resign') {
       winMsg = lang === 'en' ? `🏆 ${winner} wins by resignation!` : `🏆 ${winner} thắng do đối thủ đầu hàng!`;
+    } else if (reason === 'timeout') {
+      winMsg = lang === 'en'
+        ? `⏰ ${winner} wins! (${loser} ran out of time)`
+        : `⏰ ${winner} thắng! (${loser} hết giờ)`;
     } else if (isDraw) {
       winMsg = lang === 'en' ? '🤝 Draw!' : '🤝 Hòa!';
     } else {
