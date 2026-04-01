@@ -2,7 +2,11 @@
 //  Minesweeper Multiplayer – Main Client
 // ============================================================
 
-const SERVER_URL = 'https://ws.dienisme.online';
+const SERVER_URL = (
+  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+)
+  ? 'http://localhost:3001'
+  : 'https://server.dienisme.online';
 const BOARD_SIZE = 10;
 
 let socket = null;
