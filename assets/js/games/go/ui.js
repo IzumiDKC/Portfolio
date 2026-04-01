@@ -57,13 +57,14 @@ export function createGoUi({ state, elements }) {
   }
 
   // ── Board Rendering ───────────────────────────────────────
-  const CELL_SIZE = 32;
-  const PADDING = 24;
-  const STONE_R = 13;
-  const STAR_POSITIONS_19 = [
-    [3, 3], [3, 9], [3, 15],
-    [9, 3], [9, 9], [9, 15],
-    [15, 3], [15, 9], [15, 15]
+  const CELL_SIZE = 44;
+  const PADDING = 30;
+  const STONE_R = 18;
+  // 9x9 standard hoshi points: 4 corners + center
+  const STAR_POSITIONS = [
+    [2, 2], [2, 6],
+    [4, 4],
+    [6, 2], [6, 6]
   ];
 
   let svgEl = null;
@@ -111,7 +112,7 @@ export function createGoUi({ state, elements }) {
     svg.appendChild(linesGroup);
 
     // Star points (hoshi)
-    STAR_POSITIONS_19.forEach(([r, c]) => {
+    STAR_POSITIONS.forEach(([r, c]) => {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', PADDING + c * CELL_SIZE);
       circle.setAttribute('cy', PADDING + r * CELL_SIZE);
@@ -120,8 +121,8 @@ export function createGoUi({ state, elements }) {
       svg.appendChild(circle);
     });
 
-    // Coordinate labels (A-T, 1-19)
-    const COLS = 'ABCDEFGHJKLMNOPQRST';
+    // Coordinate labels (A-J skipping I, 1-9)
+    const COLS = 'ABCDEFGHJ';
     for (let i = 0; i < BOARD_SIZE; i++) {
       const colLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       colLabel.setAttribute('x', PADDING + i * CELL_SIZE);

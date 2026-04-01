@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title data-vi="Cờ Vây – Điền Nguyễn (Iyu)" data-en="Go (Igo) – Dien Nguyen (Iyu)">Cờ Vây – Điền Nguyễn (Iyu)</title>
-  <meta name="description" content="Chơi Cờ Vây (Go) online 2 người với bạn bè. Bàn cờ 19×19 với timer 20 giây mỗi lượt." />
+  <meta name="description" content="Chơi Cờ Vây (Go) online 2 người với bạn bè. Bàn cờ 9×9 với timer 20 giây mỗi lượt." />
   <script>(function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()</script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -263,8 +263,8 @@
         <div class="game-header text-center">
           <span class="section-tag" data-vi="Online Multiplayer" data-en="Online Multiplayer">Online Multiplayer</span>
           <h1 class="section-title" data-vi="Cờ Vây (Go)" data-en="Go (Igo / Weiqi)">Cờ Vây (Go)</h1>
-          <p class="game-subtitle" data-vi="Trò chơi chiến lược cổ điển 2 người. Bàn cờ 19×19 · Timer 20s mỗi lượt." data-en="Classic 2-player strategy game on a 19×19 board with a 20-second timer.">
-            Trò chơi chiến lược cổ điển 2 người. Bàn cờ 19×19 · Timer 20s mỗi lượt.
+          <p class="game-subtitle" data-vi="Trò chơi chiến lược cổ điển 2 người. Bàn cờ 9×9 · Timer 20s mỗi lượt." data-en="Classic 2-player strategy game on a 9×9 board with a 20-second timer.">
+            Trò chơi chiến lược cổ điển 2 người. Bàn cờ 9×9 · Timer 20s mỗi lượt.
           </p>
           <button class="btn-rules mt-2" onclick="document.getElementById('rulesModal').classList.add('active')">
             <i class="fa-solid fa-circle-question"></i> <span data-vi="Luật chơi" data-en="Rules">Luật chơi</span>
@@ -442,7 +442,7 @@
       <div class="game-rules-list">
         <ul>
           <li data-vi="<b>Số người:</b> Hai người chơi — Đen (đi trước) và Trắng." data-en="<b>Players:</b> Two players — Black (goes first) and White."><b>Số người:</b> Hai người chơi — Đen (đi trước) và Trắng.</li>
-          <li data-vi="<b>Bàn cờ:</b> Lưới 19×19 giao điểm. Các quân được đặt tại giao điểm (không phải ô vuông)." data-en="<b>Board:</b> 19×19 grid of intersections. Stones are placed on intersections, not squares."><b>Bàn cờ:</b> Lưới 19×19 giao điểm. Các quân được đặt tại giao điểm.</li>
+          <li data-vi="<b>Bàn cờ:</b> Lưới 9×9 giao điểm. Các quân được đặt tại giao điểm (không phải ô vuông)." data-en="<b>Board:</b> 9×9 grid of intersections. Stones are placed on intersections, not squares."><b>Bàn cờ:</b> Lưới 9×9 giao điểm. Các quân được đặt tại giao điểm.</li>
           <li data-vi="<b>Khí (Liberties):</b> Các giao điểm trống kề trực tiếp (ngang/dọc) với một quân cờ gọi là 'khí'. Nhóm quân hết khí sẽ bị bắt và xóa khỏi bàn." data-en="<b>Liberties:</b> Empty adjacent intersections of a stone/group. A group with no liberties is captured and removed."><b>Khí:</b> Ô trống kề với quân. Nhóm hết khí → bị bắt.</li>
           <li data-vi="<b>Tự sát:</b> Không được đặt quân vào vị trí khiến nhóm của mình hết khí (trừ trường hợp nước đó ăn được quân địch)." data-en="<b>Self-capture:</b> Forbidden to place a stone where your group has no liberties (unless it captures opponent stones)."><b>Tự sát:</b> Bị cấm — trừ khi đồng thời bắt được quân đối thủ.</li>
           <li data-vi="<b>Luật Ko:</b> Không được thực hiện nước đi khiến bàn cờ quay lại trạng thái ngay trước đó." data-en="<b>Ko Rule:</b> It is forbidden to recreate the exact board position from the immediately previous turn."><b>Luật Ko:</b> Cấm lặp lại trạng thái bàn cờ từ lượt trước.</li>

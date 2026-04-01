@@ -1,4 +1,4 @@
-const BOARD_SIZE = 19;
+const BOARD_SIZE = 9;
 const TURN_DURATION = 20; // seconds
 const KOMI = 6.5;
 
@@ -59,10 +59,11 @@ function getGroup(board, row, col) {
 
 /**
  * Remove captured stones from the board.
- * Returns number of stones captured.
+ * Returns { count, positions: [[r,c],...] }
  */
 function removeCaptured(board, color) {
-  let captured = 0;
+  let count = 0;
+  const positions = [];
   const visited = new Set();
 
   for (let r = 0; r < BOARD_SIZE; r++) {
@@ -75,13 +76,14 @@ function removeCaptured(board, color) {
       if (group.liberties.size === 0) {
         group.stones.forEach(([sr, sc]) => {
           board[sr][sc] = null;
+          positions.push([sr, sc]);
         });
-        captured += group.stones.length;
+        count += group.stones.length;
       }
     }
   }
 
-  return captured;
+  return { count, positions };
 }
 
 // ───────────────────────── Timer ─────────────────────────
@@ -181,7 +183,9 @@ function handleGoMove(room, socket, io, roomCode, { row, col }) {
   testBoard[row][col] = color;
 
   // Capture opponents first
-  let captured = removeCaptured(testBoard, opponent);
+  const captureResult = removeCaptured(testBoard, opponent);
+  const captured = captureResult.count;
+  const removedStones = captureResult.positions;
 
   // Check self-capture (suicide) – illegal unless it captures opponent stones
   const ownGroup = getGroup(testBoard, row, col);
@@ -219,7 +223,8 @@ function handleGoMove(room, socket, io, roomCode, { row, col }) {
     currentTurn: nextPlayer.name,
     currentTurnIndex: room.goCurrentTurnIndex,
     captures: room.goCaptures,
-    capturedCount: captured
+    capturedCount: captured,
+    removedStones
   });
 
   startGoTimer(room, io, roomCode);

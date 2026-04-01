@@ -104,7 +104,11 @@ export function createGoOnline({ state, elements, ui, onCellClick }) {
     });
 
     // ── Move Result ──────────────────────────────────────────
-    state.socket.on('go-result', ({ playerName, row, col, color, currentTurn, currentTurnIndex, captures, capturedCount }) => {
+    state.socket.on('go-result', ({ playerName, row, col, color, currentTurn, currentTurnIndex, captures, capturedCount, removedStones }) => {
+      // Remove captured stones from UI FIRST
+      if (removedStones && removedStones.length > 0) {
+        removedStones.forEach(([r, c]) => ui.removeStoneUI(r, c));
+      }
       ui.clearLastMoveMarkers();
       ui.placeStoneUI(row, col, color, true);
       ui.addMoveLog(playerName, color, row, col);
