@@ -1,25 +1,54 @@
 import { checkWin } from './ai.js';
+import { loadMLData, saveMLData } from './ml-storage.js';
 
 // Resolve the worker path relative to this module's location
 const WORKER_URL = new URL('./ai-worker.js', import.meta.url).href;
 
 export function createCaroAiGame({ state, elements, ui }) {
   let worker = null;
+  // Load ML data once at module init. Updated after each completed game.
+  let mlData = loadMLData();
 
+  // ── Create/reuse worker, inject ML data on first creation ────────────────
   function getWorker() {
     if (!worker) {
-      worker = new Worker(WORKER_URL); // plain script worker (no module type needed)
+      worker = new Worker(WORKER_URL);
+      // Seed the worker with persisted Q-table + opening stats
+      worker.postMessage({ type: 'init', mlData });
+      // Route all worker messages through a shared handler
+      worker.onmessage = handleWorkerMessage;
+      worker.onerror   = (e) => console.error('[AI Worker]', e);
     }
     return worker;
   }
 
-  // ── reset game state ─────────────────────────────────────────────────────
+  // ── Shared handler: move response OR ML update ───────────────────────────
+  function handleWorkerMessage({ data: msg }) {
+    // ML learning result → persist updated Q-table
+    if (msg && msg.type === 'mlUpdate') {
+      mlData = msg.mlData;
+      saveMLData(mlData);
+      return;
+    }
+    // Move response
+    if (state.isGameOver) return;
+    const aiLabel = ui.getLang() === 'en' ? 'AI' : 'Máy';
+    placeMove(msg.row, msg.col, state.aiSymbol, aiLabel);
+    if (!state.isGameOver) {
+      state.isPlayerTurn = true;
+      ui.updateAiTurnUI(true, state.playerSymbol, state.difficulty);
+    }
+  }
+
+  // ── Reset game state ──────────────────────────────────────────────────────
   function startGame() {
-    // Terminate any previous worker computation
+    // Terminate pending heavy minimax computation (if any)
     if (worker) { worker.terminate(); worker = null; }
 
-    state.isGameOver = false;
-    state.isPlayerTurn = true;
+    state.isGameOver    = false;
+    state.isPlayerTurn  = true;
+    state.humanMoveList = []; // track human moves for ML opening detection
+
     elements.historyLog.innerHTML = '';
     elements.roomBadge.style.display = 'none';
 
@@ -35,13 +64,15 @@ export function createCaroAiGame({ state, elements, ui }) {
     }
   }
 
-  // ── cell click (player's move) ───────────────────────────────────────────
+  // ── Cell click (player's move) ────────────────────────────────────────────
   function handleCellClick(row, col) {
     if (state.isGameOver || !state.isPlayerTurn) return;
     if (state.board[row][col] !== null) return;
 
-    placeMove(row, col, state.playerSymbol, ui.getLang() === 'en' ? 'You' : 'Bạn');
+    // Record human move for ML opening detection (before placing)
+    state.humanMoveList.push(`${row},${col}`);
 
+    placeMove(row, col, state.playerSymbol, ui.getLang() === 'en' ? 'You' : 'Bạn');
     if (state.isGameOver) return;
 
     state.isPlayerTurn = false;
@@ -49,35 +80,29 @@ export function createCaroAiGame({ state, elements, ui }) {
     scheduleAiMove();
   }
 
-  // ── send board to worker, receive move ────────────────────────────────────
+  // ── Send board to worker, receive move ────────────────────────────────────
   function scheduleAiMove() {
     if (state.isGameOver) return;
-
-    // Deep-copy the board (worker runs on serialized data)
     const boardSnapshot = state.board.map(r => [...r]);
-
-    const w = getWorker();
-    w.onmessage = ({ data: move }) => {
-      if (state.isGameOver) return;
-      const aiLabel = ui.getLang() === 'en' ? 'AI' : 'Máy';
-      placeMove(move.row, move.col, state.aiSymbol, aiLabel);
-      if (!state.isGameOver) {
-        state.isPlayerTurn = true;
-        ui.updateAiTurnUI(true, state.playerSymbol, state.difficulty);
-      }
-    };
-    w.onerror = (e) => {
-      console.error('AI worker error:', e);
-    };
-
-    w.postMessage({
-      board: boardSnapshot,
-      aiSymbol: state.aiSymbol,
-      difficulty: state.difficulty
+    getWorker().postMessage({
+      board:      boardSnapshot,
+      aiSymbol:   state.aiSymbol,
+      difficulty: state.difficulty,
+      humanMoves: state.humanMoveList   // for ML opening detection in hard mode
     });
   }
 
-  // ── place a piece and check win/draw ──────────────────────────────────────
+  // ── After game ends, trigger ML learning (hard mode only) ────────────────
+  function triggerLearning(result) {
+    if (state.difficulty !== 'hard') return;
+    const openingKey = state.humanMoveList.slice(0, 3).join('|');
+    // Worker must still be alive; if terminated (e.g. mid-game restart) skip
+    if (!worker) return;
+    worker.postMessage({ type: 'learn', result, openingKey });
+    // Response (mlUpdate) is handled by the shared handleWorkerMessage
+  }
+
+  // ── Place piece → check win/draw → trigger learning on game end ───────────
   function placeMove(row, col, symbol, playerName) {
     ui.updateCellUI(row, col, symbol);
     ui.addLog(playerName, symbol, row, col);
@@ -86,11 +111,15 @@ export function createCaroAiGame({ state, elements, ui }) {
       state.isGameOver = true;
       ui.updateCellUI(row, col, symbol, true);
       const isPlayerWin = symbol === state.playerSymbol;
+
+      // Trigger ML: 'win' = AI won, 'lose' = human won
+      triggerLearning(isPlayerWin ? 'lose' : 'win');
+
       setTimeout(() => {
         ui.showWinner({
-          winner: isPlayerWin ? (ui.getLang() === 'en' ? 'You' : 'Bạn') : (ui.getLang() === 'en' ? 'AI' : 'Máy'),
-          isDraw: false,
-          isAiMode: true,
+          winner:      isPlayerWin ? (ui.getLang() === 'en' ? 'You' : 'Bạn') : (ui.getLang() === 'en' ? 'AI' : 'Máy'),
+          isDraw:      false,
+          isAiMode:    true,
           isPlayerWin
         });
       }, 800);
@@ -100,13 +129,14 @@ export function createCaroAiGame({ state, elements, ui }) {
     const isFull = state.board.every(r => r.every(c => c !== null));
     if (isFull) {
       state.isGameOver = true;
+      triggerLearning('draw');
       setTimeout(() => {
         ui.showWinner({ winner: null, isDraw: true, isAiMode: true });
       }, 800);
     }
   }
 
-  // ── restart ───────────────────────────────────────────────────────────────
+  // ── Restart ───────────────────────────────────────────────────────────────
   function restart() {
     startGame();
   }
