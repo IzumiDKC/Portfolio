@@ -41,6 +41,13 @@ const {
   resetGoGame,
   endGoBecauseOpponentLeft
 } = require('./games/go');
+const {
+  startCoCaNguaGame,
+  handleCoCaNguaRoll,
+  handleCoCaNguaMove,
+  resetCoCaNguaGame,
+  endCoCaNguaBecauseOpponentLeft
+} = require('./games/co-ca-ngua');
 
 const rooms = {};
 
@@ -111,7 +118,8 @@ function registerGameHandlers(io) {
         return;
       }
 
-      if (room.players.length >= 10) {
+      const maxPlayers = room.gameType === 'co-ca-ngua' ? 4 : 10;
+      if (room.players.length >= maxPlayers) {
         socket.emit('join-error', { message: 'Phong da day / Room is full' });
         return;
       }
@@ -167,6 +175,11 @@ function registerGameHandlers(io) {
 
       if (room.gameType === 'go') {
         startGoGame(room, io, code);
+        return;
+      }
+
+      if (room.gameType === 'co-ca-ngua') {
+        startCoCaNguaGame(room, io, code);
         return;
       }
 
@@ -239,6 +252,18 @@ function registerGameHandlers(io) {
       handleGoResign(room, socket, io, code);
     });
 
+    socket.on('co-ca-ngua-roll', () => {
+      const code = socket.roomCode;
+      const room = rooms[code];
+      if (room) handleCoCaNguaRoll(room, socket, io, code);
+    });
+
+    socket.on('co-ca-ngua-move', ({ pieceIndex }) => {
+      const code = socket.roomCode;
+      const room = rooms[code];
+      if (room) handleCoCaNguaMove(room, socket, io, code, { pieceIndex });
+    });
+
     socket.on('play-again', () => {
       const code = socket.roomCode;
       const room = rooms[code];
@@ -251,6 +276,7 @@ function registerGameHandlers(io) {
       resetTienLenGame(room);
       resetMinesweeperGame(room);
       resetGoGame(room);
+      resetCoCaNguaGame(room);
 
       io.to(code).emit('back-to-lobby', {
         players: room.players.map((player) => player.name)
@@ -300,6 +326,8 @@ function registerGameHandlers(io) {
           endMinesweeperBecauseOpponentLeft(room, io, code);
         } else if (room.gameType === 'go') {
           endGoBecauseOpponentLeft(room, io, code);
+        } else if (room.gameType === 'co-ca-ngua') {
+          endCoCaNguaBecauseOpponentLeft(room, io, code);
         } else {
           endSecretNumberBecauseOpponentLeft(room, io, code);
         }

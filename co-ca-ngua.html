@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark" data-lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-vi="Cờ Cá Ngựa – Điền Nguyễn (Iyu)" data-en="Ludo – Dien Nguyen (Iyu)">Cờ Cá Ngựa – Điền Nguyễn (Iyu)</title>
+  <meta name="description" content="Trò chơi Cờ Cá Ngựa (Ludo) nhiều người chơi trực tuyến – 2 đến 4 người. Tung xúc xắc, di chuyển quân, về đích trước đối thủ!" />
+  <script>(function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="assets/styles/style.css" />
+  <link rel="stylesheet" href="assets/styles/game-common.css" />
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+  <style>
+    /* ═══════════════════ LUDO PAGE STYLES ═══════════════════ */
+    .ludo-page .game-card { max-width: 520px; }
+
+    /* ── Board wrapper ── */
+    .ludo-board-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 0.5rem 0;
+      overflow: auto;
+    }
+
+    #ludo-board {
+      display: grid;
+      grid-template-columns: repeat(15, 1fr);
+      grid-template-rows: repeat(15, 1fr);
+      gap: 2px;
+      width: min(570px, 96vw);
+      aspect-ratio: 1;
+      user-select: none;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.45), 0 0 0 3px rgba(255,255,255,0.06);
+    }
+
+    .ludo-cell {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      /* Critical: prevent cell from growing beyond grid allocation */
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      transition: background 0.15s;
+    }
+
+    /* Blank */
+    .blank-cell { background: var(--bg-secondary, #1e1e2e); }
+    [data-theme="light"] .blank-cell { background: #e2e8f0; }
+
+    /* Track */
+    .track-cell {
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+    }
+    [data-theme="light"] .track-cell {
+      background: rgba(255,255,255,0.85);
+    }
+
+    /* Safe cell */
+    .safe-cell { background: rgba(250,204,21,0.15) !important; }
+    [data-theme="light"] .safe-cell { background: rgba(250,204,21,0.3) !important; }
+    .safe-star {
+      font-size: clamp(6px, 1.6vw, 12px);
+      color: #facc15;
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    /* Home areas */
+    .home-area { border-radius: 2px; }
+    .home-red    { background: rgba(239,68,68,0.22); }
+    .home-blue   { background: rgba(59,130,246,0.22); }
+    .home-yellow { background: rgba(234,179,8,0.22); }
+    .home-green  { background: rgba(34,197,94,0.22); }
+    [data-theme="light"] .home-red    { background: rgba(239,68,68,0.18); }
+    [data-theme="light"] .home-blue   { background: rgba(59,130,246,0.18); }
+    [data-theme="light"] .home-yellow { background: rgba(234,179,8,0.18); }
+    [data-theme="light"] .home-green  { background: rgba(34,197,94,0.18); }
+
+    /* Home slot – where pieces sit */
+    .home-slot { border-radius: 100px; }
+    .home-red.home-slot    { box-shadow: inset 0 0 0 2px rgba(239,68,68,0.5); }
+    .home-blue.home-slot   { box-shadow: inset 0 0 0 2px rgba(59,130,246,0.5); }
+    .home-yellow.home-slot { box-shadow: inset 0 0 0 2px rgba(234,179,8,0.5); }
+    .home-green.home-slot  { box-shadow: inset 0 0 0 2px rgba(34,197,94,0.5); }
+
+    /* Home columns */
+    .home-col-red    { background: rgba(239,68,68,0.35); }
+    .home-col-blue   { background: rgba(59,130,246,0.35); }
+    .home-col-yellow { background: rgba(234,179,8,0.35); }
+    .home-col-green  { background: rgba(34,197,94,0.35); }
+    [data-theme="light"] .home-col-red    { background: rgba(239,68,68,0.28); }
+    [data-theme="light"] .home-col-blue   { background: rgba(59,130,246,0.28); }
+    [data-theme="light"] .home-col-yellow { background: rgba(234,179,8,0.28); }
+    [data-theme="light"] .home-col-green  { background: rgba(34,197,94,0.28); }
+
+    /* Finish center */
+    .finish-center {
+      background: linear-gradient(135deg, rgba(239,68,68,0.4) 0%, rgba(59,130,246,0.4) 33%, rgba(234,179,8,0.4) 66%, rgba(34,197,94,0.4) 100%);
+      border-radius: 4px;
+    }
+    .finish-star {
+      font-size: clamp(10px, 2.8vw, 22px);
+      color: #fff;
+      filter: drop-shadow(0 0 4px rgba(255,255,255,0.6));
+      pointer-events: none;
+    }
+
+    /* ── Pieces ── */
+    .ludo-piece {
+      /* Size relative to cell – use percentage of parent via vw fallback */
+      width: clamp(8px, 2.8vw, 18px);
+      height: clamp(8px, 2.8vw, 18px);
+      flex-shrink: 0;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.6);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      /* Do NOT use transition/transform that affect layout */
+      cursor: default;
+      position: relative;
+      z-index: 2;
+    }
+
+    .ludo-piece.can-move {
+      cursor: pointer;
+      animation: piece-pulse 0.9s ease-in-out infinite;
+      z-index: 10;
+      /* Use outline instead of transform so cell size is unaffected */
+      outline: 3px solid #facc15;
+      outline-offset: 1px;
+    }
+    .ludo-piece.can-move:hover {
+      outline-color: #f97316;
+      outline-width: 4px;
+    }
+
+    @keyframes piece-pulse {
+      0%,100% { box-shadow: 0 0 0 3px #fff, 0 0 0 5px rgba(0,0,0,0.35); outline-color: #facc15; }
+      50%      { box-shadow: 0 0 0 4px #fff, 0 0 0 8px rgba(0,0,0,0.2), 0 0 12px 4px rgba(255,220,0,0.5); outline-color: #f97316; }
+    }
+
+    .ludo-piece-red    { background: radial-gradient(circle at 35% 35%, #fca5a5, #dc2626); }
+    .ludo-piece-blue   { background: radial-gradient(circle at 35% 35%, #93c5fd, #2563eb); }
+    .ludo-piece-yellow { background: radial-gradient(circle at 35% 35%, #fde68a, #ca8a04); }
+    .ludo-piece-green  { background: radial-gradient(circle at 35% 35%, #86efac, #16a34a); }
+
+    /* ── Info bar ── */
+    .ludo-info-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .turn-indicator {
+      flex: 1;
+      text-align: center;
+      padding: 0.5rem 1rem;
+      border-radius: 0.75rem;
+      border: 1.5px solid;
+      font-weight: 700;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+
+    .turn-indicator.my-turn {
+      animation: turn-glow 1.4s ease-in-out infinite;
+    }
+
+    @keyframes turn-glow {
+      0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.0); }
+      50%      { box-shadow: 0 0 14px 4px rgba(255,255,255,0.15); }
+    }
+
+    /* ── Player chips ── */
+    .player-chips-bar {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+
+    .player-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 20px;
+      border: 1.5px solid;
+      background: rgba(255,255,255,0.04);
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    [data-theme="light"] .player-chip { background: rgba(0,0,0,0.04); }
+
+    .player-chip.me {
+      background: rgba(255,255,255,0.1);
+      font-weight: 700;
+    }
+
+    .chip-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Dice section (compact) ── */
+    .ludo-dice-section {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 0.6rem 0 0.2rem;
+      justify-content: center;
+    }
+
+    .last-dice-wrap {
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.08);
+      border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      font-size: 1.6rem;
+      flex-shrink: 0;
+    }
+    [data-theme="light"] .last-dice-wrap {
+      background: rgba(0,0,0,0.06);
+      border-color: rgba(0,0,0,0.12);
+    }
+
+    #diceDisplay { line-height: 1; }
+
+    #btnRoll {
+      padding: 0.6rem 1.6rem;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+      flex: 1;
+      max-width: 260px;
+    }
+    #btnRoll.active-turn {
+      animation: roll-glow 1.3s ease-in-out infinite;
+    }
+    @keyframes roll-glow {
+      0%,100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+      50%      { box-shadow: 0 0 0 8px rgba(99,102,241,0.3); }
+    }
+
+    /* ═══════ DICE OVERLAY ═══════ */
+    .dice-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9000;
+      pointer-events: none;
+      /* hidden by default */
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .dice-overlay.show {
+      /* overlay background – subtle dark scrim */
+      background: rgba(0,0,0,0.18);
+      pointer-events: none;
+    }
+
+    .dice-overlay-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(145deg, #1e1e3a, #2d2d5e);
+      border: 2px solid rgba(99,102,241,0.55);
+      border-radius: 24px;
+      padding: 2rem 3rem;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.07);
+      /* start off-screen top */
+      transform: translateY(-120px) scale(0.7);
+      opacity: 0;
+      transition: none;
+    }
+    [data-theme="light"] .dice-overlay-card {
+      background: linear-gradient(145deg, #fff, #f0f0ff);
+      border-color: rgba(99,102,241,0.4);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(99,102,241,0.12);
+    }
+
+    .dice-overlay.show .dice-overlay-card {
+      animation: dice-drop 0.55s cubic-bezier(0.22, 1.4, 0.36, 1) forwards;
+    }
+
+    @keyframes dice-drop {
+      0%   { transform: translateY(-140px) scale(0.6); opacity: 0; }
+      60%  { transform: translateY(12px)   scale(1.06); opacity: 1; }
+      80%  { transform: translateY(-5px)   scale(0.98); opacity: 1; }
+      100% { transform: translateY(0)      scale(1);    opacity: 1; }
+    }
+
+    .dice-overlay.hide .dice-overlay-card {
+      animation: dice-rise 0.38s cubic-bezier(0.4, 0, 1, 1) forwards;
+    }
+
+    @keyframes dice-rise {
+      0%   { transform: translateY(0)    scale(1);   opacity: 1; }
+      100% { transform: translateY(-80px) scale(0.8); opacity: 0; }
+    }
+
+    .dice-overlay-face {
+      font-size: clamp(4rem, 16vw, 7rem);
+      line-height: 1;
+      filter: drop-shadow(0 4px 16px rgba(99,102,241,0.5));
+      animation: dice-wobble 0.5s ease 0.3s both;
+    }
+
+    @keyframes dice-wobble {
+      0%,100% { transform: rotate(0deg); }
+      25%     { transform: rotate(-8deg); }
+      75%     { transform: rotate(8deg); }
+    }
+
+    .dice-overlay-label {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #c4b5fd;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+    [data-theme="light"] .dice-overlay-label { color: #4f46e5; }
+    .dice-overlay-label strong {
+      font-size: 1.4rem;
+      color: #fff;
+    }
+    [data-theme="light"] .dice-overlay-label strong { color: #1e1b4b; }
+
+    /* special color per value */
+    .dice-overlay-card.dice-val-1 { border-color: rgba(239,68,68,0.7); }
+    .dice-overlay-card.dice-val-6 { border-color: rgba(234,179,8,0.8); }
+    .dice-overlay-card.dice-val-6 .dice-overlay-face {
+      filter: drop-shadow(0 4px 20px rgba(234,179,8,0.65));
+      animation: dice-wobble-special 0.55s ease 0.25s both;
+    }
+    @keyframes dice-wobble-special {
+      0%,100% { transform: rotate(0deg) scale(1); }
+      20%     { transform: rotate(-10deg) scale(1.08); }
+      50%     { transform: rotate(10deg) scale(1.12); }
+      80%     { transform: rotate(-5deg) scale(1.05); }
+    }
+    .dice-overlay-card.dice-val-1 .dice-overlay-face {
+      filter: drop-shadow(0 4px 20px rgba(239,68,68,0.6));
+    }
+
+    /* Hint label */
+    .ludo-move-hint {
+      text-align: center;
+      font-size: 0.82rem;
+      color: #f59e0b;
+      font-weight: 600;
+      margin-top: -0.25rem;
+      margin-bottom: 0.25rem;
+      min-height: 1.2rem;
+      animation: hint-fade 0.4s ease;
+    }
+    @keyframes hint-fade {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .ludo-history-wrap {
+      margin-top: 0.75rem;
+    }
+    .ludo-history-wrap h3 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 0.4rem;
+    }
+    .history-log {
+      max-height: 130px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      padding: 0.25rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      line-height: 1.5;
+    }
+    [data-theme="light"] .log-entry {
+      border-bottom-color: rgba(0,0,0,0.06);
+    }
+
+    /* ── Game over banner (inline) ── */
+    .game-over-banner {
+      display: none;
+      border-radius: 1rem;
+      background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.18));
+      border: 1.5px solid rgba(99,102,241,0.45);
+      padding: 1.1rem 1.4rem;
+      margin-bottom: 1rem;
+      animation: gob-slide-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      text-align: center;
+    }
+    .gob-content { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+    .gob-msg { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0; }
+    .gob-sub { font-size: 0.83rem; color: var(--text-secondary); margin: 0; }
+    .gob-restart { margin-top: 0.5rem; width: auto; padding: 0.5rem 1.6rem; }
+    @keyframes gob-slide-in {
+      from { opacity: 0; transform: translateY(-12px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── Ranking items ── */
+    .ranking-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    [data-theme="light"] .ranking-item { border-bottom-color: rgba(0,0,0,0.07); }
+    .rank-badge {
+      min-width: 40px;
+      text-align: center;
+      padding: 0.2rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .rank-piece {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.4);
+      flex-shrink: 0;
+    }
+    .rank-name { font-weight: 600; font-size: 0.95rem; }
+
+    /* ── Gameover icon ── */
+    .gameover-icon { font-size: 3.5rem; margin-bottom: 0.5rem; }
+
+    /* ── Lobby ── */
+    .ludo-lobby-card { max-width: 480px; }
+    .host-badge {
+      font-size: 0.75rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 10px;
+      background: rgba(99,102,241,0.15);
+      border: 1px solid rgba(99,102,241,0.3);
+      color: var(--accent-primary);
+      margin-left: 0.4rem;
+    }
+    .lobby-player-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.5rem;
+      color: var(--text-primary);
+      font-weight: 500;
+      background: rgba(255,255,255,0.03);
+      margin-bottom: 0.4rem;
+    }
+    [data-theme="light"] .lobby-player-item { background: rgba(0,0,0,0.03); }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .ludo-info-bar { flex-direction: column; align-items: stretch; }
+      .ludo-dice-section { gap: 0.75rem; }
+    }
+  </style>
+</head>
+
+<body class="game-page ludo-page">
+
+  <!-- Connecting Overlay -->
+  <div id="connectingOverlay" class="connecting-overlay">
+    <div class="spinner"></div>
+    <p>Đang kết nối đến server...</p>
+  </div>
+
+  <nav id="navbar" class="scrolled">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">iyu<span class="logo-dot">.</span></a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="about.html" class="nav-link" data-vi="Về tôi" data-en="About">Về tôi</a></li>
+        <li><a href="experience.html" class="nav-link" data-vi="Kinh nghiệm" data-en="Experience">Kinh nghiệm</a></li>
+        <li><a href="skills.html" class="nav-link" data-vi="Kỹ năng" data-en="Skills">Kỹ năng</a></li>
+        <li><a href="collection.html" class="nav-link active" data-vi="Bộ sưu tập" data-en="Collection">Bộ sưu tập</a></li>
+        <li><a href="contact.html" class="nav-link" data-vi="Liên hệ" data-en="Contact">Liên hệ</a></li>
+      </ul>
+      <div class="nav-controls">
+        <button id="langToggle" class="nav-ctrl-btn" title="Switch language">EN</button>
+        <button id="themeToggle" class="nav-ctrl-btn" title="Toggle theme"><i class="fa-solid fa-sun"></i></button>
+        <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    <section class="game-section">
+      <div class="container game-container" style="display:flex; flex-direction:column; align-items:center;">
+
+        <!-- Header -->
+        <div class="game-header text-center">
+          <span class="section-tag">Online Multiplayer</span>
+          <h1 class="section-title">🐴 Cờ Cá Ngựa</h1>
+          <p class="game-subtitle">Ludo kinh điển – 2 đến 4 người chơi. Tung xúc xắc, dắt quân về đích, đạp quân đối thủ!</p>
+          <button class="btn-rules mt-2" onclick="document.getElementById('rulesModal').classList.add('active')">
+            <i class="fa-solid fa-circle-question"></i> <span>Luật chơi</span>
+          </button>
+        </div>
+
+        <!-- ═══════════════ LOBBY SCREEN ═══════════════ -->
+        <div class="game-card ludo-lobby-card" id="lobbyScreen">
+
+          <div id="lobbyNameStep">
+            <h2 class="screen-title">Tham gia Cờ Cá Ngựa</h2>
+            <div class="input-group">
+              <label for="playerNameInput">Tên hiển thị của bạn:</label>
+              <input type="text" id="playerNameInput" class="game-input" placeholder="Ví dụ: Player123" maxlength="15" />
+            </div>
+            <div class="online-actions">
+              <button class="game-btn btn-primary" id="btnCreateRoom">
+                <i class="fa-solid fa-plus"></i> Tạo Phòng Mới
+              </button>
+              <div class="divider"><span>HOẶC</span></div>
+              <button class="game-btn btn-outline" id="btnShowJoin">
+                <i class="fa-solid fa-right-to-bracket"></i> Tham Gia Bằng Mã
+              </button>
+            </div>
+            <div class="join-room-group" id="joinRoomGroup">
+              <input type="text" class="game-input" id="roomCodeInput" placeholder="Nhập mã phòng (vd: ABCD12)" maxlength="6" style="text-transform:uppercase;" />
+              <button class="game-btn btn-primary" id="btnJoinRoom"><span>Vào Phòng</span></button>
+            </div>
+            <div id="lobbyStatus" class="status-message"></div>
+          </div>
+
+          <div id="lobbyWaitStep" style="display:none;">
+            <h2 class="screen-title">Phòng Chờ</h2>
+            <div class="room-info-card">
+              <p>Mã phòng của bạn:</p>
+              <div class="room-code-display" id="roomCodeDisplay">
+                <span id="roomCodeText">------</span>
+                <button class="copy-btn" id="btnCopyCode" title="Copy"><i class="fa-regular fa-copy"></i></button>
+              </div>
+              <p class="small-text mt-1 text-muted">Gửi mã này cho bạn bè để họ tham gia. (Tối đa 4 người)</p>
+            </div>
+
+            <div class="lobby-players">
+              <h3>Người Chơi (<span id="playerCountLabel">0</span>/4)</h3>
+              <ul id="lobbyPlayerList"></ul>
+            </div>
+
+            <div id="lobbyWaitStatus" class="status-message"></div>
+
+            <div class="button-group mt-3" style="gap:1rem; flex-wrap:wrap;">
+              <button class="game-btn btn-outline" id="btnLeaveLobby" style="flex:1;">
+                <i class="fa-solid fa-arrow-left"></i> Rời Phòng
+              </button>
+              <button class="game-btn btn-primary" id="btnStartOnline" disabled style="flex:1;">
+                Bắt Đầu Game <i class="fa-solid fa-play"></i>
+              </button>
+              <div id="waitHostMessage" style="display:none; width:100%; text-align:center; padding:12px; background:rgba(99,102,241,0.1); border-radius:8px; border:1px dashed rgba(99,102,241,0.3); color:var(--text-primary); font-weight:500;">
+                <i class="fa-solid fa-hourglass-half fa-spin" style="color:var(--accent-primary);"></i>
+                Đang chờ chủ phòng bắt đầu...
+              </div>
+            </div>
+          </div>
+
+        </div><!-- end lobby card -->
+
+        <!-- ═══════════════ PLAY SCREEN ═══════════════ -->
+        <div id="playScreen" style="display:none; width:100%; max-width:640px;">
+
+          <!-- Game over inline banner -->
+          <div id="gameOverBanner" class="game-over-banner">
+            <div class="gob-content">
+              <p id="gobMsg" class="gob-msg">🏁 Game kết thúc!</p>
+              <p id="gobSub" class="gob-sub"></p>
+              <button class="game-btn btn-primary gob-restart" id="btnPlayAgain" style="display:none;">
+                <i class="fa-solid fa-rotate-right"></i> Chơi lại
+              </button>
+            </div>
+          </div>
+
+          <!-- Turn indicator -->
+          <div class="ludo-info-bar">
+            <div class="turn-indicator" id="turnIndicator">⏳ Chờ bắt đầu...</div>
+          </div>
+
+          <!-- Player chips -->
+          <div class="player-chips-bar" id="playerChips"></div>
+
+          <!-- Board -->
+          <div class="ludo-board-wrapper">
+            <div id="ludo-board"></div>
+          </div>
+
+          <!-- Dice section (compact) -->
+          <div class="ludo-dice-section">
+            <div class="last-dice-wrap" id="lastDiceWrap" title="Kết quả gần nhất">
+              <span id="diceDisplay">🎲</span>
+            </div>
+            <button class="game-btn btn-primary" id="btnRoll" disabled>
+              <i class="fa-solid fa-dice"></i> Tung Xúc Xắc
+            </button>
+          </div>
+          <div class="ludo-move-hint" id="moveHint"></div>
+
+
+          <!-- History -->
+          <div class="ludo-history-wrap">
+            <h3><i class="fa-solid fa-scroll"></i> Nhật ký</h3>
+            <div class="history-log" id="historyLog"></div>
+          </div>
+
+        </div><!-- end play screen -->
+
+        <!-- ═══════════════ GAME OVER SCREEN ═══════════════ -->
+        <div id="gameOverScreen" style="display:none; width:100%; max-width:460px;">
+          <div class="game-card">
+            <div class="gameover-icon text-center">🏆</div>
+            <h2 class="screen-title mb-2 text-gradient text-center">Kết Thúc!</h2>
+            <div id="finalRankings" style="margin-bottom:1.5rem;"></div>
+            <button class="game-btn btn-primary mt-2" id="btnRestart" style="display:none;">
+              <i class="fa-solid fa-rotate-right"></i> Chơi lại
+            </button>
+          </div>
+        </div>
+
+      </div><!-- end container -->
+    </section>
+
+    <!-- Bottom nav -->
+    <div class="page-nav-bar">
+      <div class="container">
+        <a href="games.html" class="page-nav-btn btn-ghost"><i class="fa-solid fa-arrow-left"></i> Trò chơi</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dice Overlay (centered drop animation) -->
+  <div id="diceOverlay" class="dice-overlay" aria-hidden="true">
+    <div class="dice-overlay-card" id="diceOverlayCard">
+      <div class="dice-overlay-face" id="diceOverlayFace">⚄</div>
+      <div class="dice-overlay-label" id="diceOverlayLabel">Tung được <strong>4</strong>!</div>
+    </div>
+  </div>
+
+  <!-- Rules Modal -->
+  <div class="game-modal-overlay" id="rulesModal">
+    <div class="game-modal-content">
+      <button class="game-modal-close" onclick="document.getElementById('rulesModal').classList.remove('active')"><i class="fa-solid fa-times"></i></button>
+      <h2 class="game-modal-title">🐴 Luật Chơi Cờ Cá Ngựa</h2>
+      <div class="game-rules-list">
+        <ul>
+          <li><b>Số người:</b> 2–4 người chơi trực tuyến.</li>
+          <li><b>Quân cờ:</b> Mỗi người có 4 quân bắt đầu ở khu HOME màu của mình.</li>
+          <li><b>Ra sân:</b> Cần tung được <b>6</b> mới đưa quân ra khỏi HOME.</li>
+          <li><b>Tung 6 🎲:</b> Được tung thêm 1 lần (tối đa 3 lần 6 liên tiếp – sẽ bỏ lượt nếu vượt).</li>
+          <li><b>Ăn quân 💥:</b> Đạp vào ô của đối thủ → quân đó quay về HOME (trừ ô Safe).</li>
+          <li><b>Ô Safe ★:</b> Quân đứng trên ô này không thể bị ăn.</li>
+          <li><b>Về đích:</b> Đưa quân theo đường HOME COLUMN (màu) vào ô trung tâm ★.</li>
+          <li><b>Thắng:</b> Đưa cả 4 quân vào ô đích trước đối thủ!</li>
+          <li><b>Bỏ lượt:</b> Nếu không có nước đi hợp lệ, lượt tự động chuyển.</li>
+        </ul>
+        <div style="text-align:center; margin-top:2rem;">
+          <button class="game-btn" onclick="document.getElementById('rulesModal').classList.remove('active')" style="display:inline-block; width:auto; padding:0.8rem 2.5rem;">
+            <i class="fa-solid fa-check"></i> Đã hiểu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer mt-auto">
+    <div class="container">
+      <p>© 2026 <strong>Điền Nguyễn (Iyu)</strong>. Được xây dựng với <i class="fa-solid fa-heart" style="color:#6366f1;"></i></p>
+    </div>
+  </footer>
+
+  <script src="assets/js/shared/preferences/theme.js"></script>
+  <script src="assets/js/shared/preferences/language.js"></script>
+  <script src="assets/js/shared/preferences/boot.js"></script>
+  <script src="assets/js/shared/site/navbar.js"></script>
+  <script src="assets/js/shared/site/mobile-menu.js"></script>
+  <script src="assets/js/shared/site/observers.js"></script>
+  <script src="assets/js/shared/site/effects.js"></script>
+  <script src="assets/js/shared/site/transitions.js"></script>
+  <script src="assets/js/shared/site/boot.js"></script>
+
+  <script>
+    // Screen show/hide helpers (inline so main.js can call them via DOM)
+    window.showGameScreen = function(name) {
+      const lobby    = document.getElementById('lobbyScreen');
+      const play     = document.getElementById('playScreen');
+      const gameover = document.getElementById('gameOverScreen');
+      [lobby, play, gameover].forEach(s => { if(s) s.style.display = 'none'; });
+      if (name === 'lobby'    && lobby)    { lobby.style.display = ''; lobby.style.removeProperty('display'); lobby.className = 'game-card ludo-lobby-card'; }
+      if (name === 'play'     && play)     play.style.display = '';
+      if (name === 'gameover' && gameover) gameover.style.display = '';
+    };
+    // Escape to close modal
+    document.addEventListener('keydown', e => {
+      const m = document.getElementById('rulesModal');
+      if (e.key === 'Escape' && m && m.classList.contains('active')) m.classList.remove('active');
+    });
+  </script>
+
+  <script type="module" src="assets/js/games/co-ca-ngua/main.js"></script>
+</body>
+</html>

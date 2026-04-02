@@ -44,10 +44,18 @@ export function createCaroUi({ state, elements }) {
 
   function updateCellUI(row, col, symbol, isWinCell = false) {
     state.board[row][col] = symbol;
+    
+    // Remove last-move class from previously played cell
+    const previousMove = elements.caroBoard.querySelector('.last-move');
+    if (previousMove) {
+      previousMove.classList.remove('last-move');
+    }
+
     const index = row * BOARD_SIZE + col;
     const cell = elements.caroBoard.children[index];
     cell.textContent = symbol;
     cell.classList.add(symbol === 'X' ? 'cell-x' : 'cell-o');
+    cell.classList.add('last-move');
     if (isWinCell) {
       cell.classList.add('win-cell');
     }
