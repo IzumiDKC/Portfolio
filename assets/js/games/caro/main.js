@@ -1,4 +1,5 @@
 import { getCaroElements } from './dom.js';
+import { createCaroAiGame } from './ai-game.js';
 import { createCaroOnline } from './online-game.js';
 import { createCaroState } from './state.js';
 import { createCaroUi } from './ui.js';
@@ -8,14 +9,69 @@ document.addEventListener('DOMContentLoaded', () => {
   const elements = getCaroElements();
   const ui = createCaroUi({ state, elements });
   let onlineGame;
+  let aiGame;
 
+  // ── Shared cell click handler ─────────────────────────────────────────────
   function handleCellClick(row, col) {
+    if (state.isAiMode) return; // AI game uses its own handler via ai-game.js
     onlineGame.emitMove(row, col);
   }
 
   onlineGame = createCaroOnline({ state, elements, ui, onCellClick: handleCellClick });
   ui.resetLobbyUI();
 
+  // ── AI Mode: show difficulty modal ────────────────────────────────────────
+  const btnPlayAi = document.getElementById('btnPlayAi');
+  const aiSetupModal = document.getElementById('aiSetupModal');
+  const btnCloseAiModal = document.getElementById('btnCloseAiModal');
+  const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+  const btnStartAi = document.getElementById('btnStartAi');
+  let selectedDifficulty = 'medium';
+  let selectedSymbol = 'X';
+
+  if (btnPlayAi) {
+    btnPlayAi.addEventListener('click', () => {
+      aiSetupModal.classList.add('active');
+    });
+  }
+
+  if (btnCloseAiModal) {
+    btnCloseAiModal.addEventListener('click', () => aiSetupModal.classList.remove('active'));
+  }
+
+  // Difficulty selection
+  difficultyBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      difficultyBtns.forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedDifficulty = btn.dataset.difficulty;
+    });
+  });
+
+  // Symbol selection
+  const symbolBtns = document.querySelectorAll('.symbol-btn');
+  symbolBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      symbolBtns.forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedSymbol = btn.dataset.symbol;
+    });
+  });
+
+  if (btnStartAi) {
+    btnStartAi.addEventListener('click', () => {
+      aiSetupModal.classList.remove('active');
+      state.isAiMode = true;
+      state.playerSymbol = selectedSymbol;
+      state.aiSymbol = selectedSymbol === 'X' ? 'O' : 'X';
+      state.difficulty = selectedDifficulty;
+
+      aiGame = createCaroAiGame({ state, elements, ui });
+      aiGame.startGame();
+    });
+  }
+
+  // ── Online Multiplayer ────────────────────────────────────────────────────
   elements.btnCreateRoom.addEventListener('click', async () => {
     const name = elements.onlineNameInput.value.trim();
     if (!name) {
@@ -25,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     state.myPlayerName = name;
+    state.isAiMode = false;
     localStorage.setItem('onlinePlayerName', name);
 
     try {
@@ -50,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     state.myPlayerName = name;
     state.currentRoomCode = code;
+    state.isAiMode = false;
     localStorage.setItem('onlinePlayerName', name);
 
     try {
@@ -94,6 +152,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   elements.btnRestart.addEventListener('click', () => {
+    // AI mode restart
+    if (state.isAiMode && aiGame) {
+      aiGame.restart();
+      return;
+    }
+
+    // Online mode restart
     if (state.isHost && state.socket) {
       state.socket.emit('play-again');
       return;
@@ -111,4 +176,11 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
+
+  // Close AI modal on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && aiSetupModal && aiSetupModal.classList.contains('active')) {
+      aiSetupModal.classList.remove('active');
+    }
+  });
 });

@@ -53,6 +53,30 @@ export function createCaroUi({ state, elements }) {
     }
   }
 
+  function updateAiTurnUI(isPlayerTurn, playerSymbol, difficulty) {
+    const difficultyLabel = {
+      easy: { vi: 'Dễ', en: 'Easy' },
+      medium: { vi: 'Trung bình', en: 'Medium' },
+      hard: { vi: 'Khó', en: 'Hard' }
+    }[difficulty] || { vi: '', en: '' };
+    const lang = getLang();
+    const diffText = difficultyLabel[lang];
+
+    const viLabel = isPlayerTurn
+      ? `Lượt của bạn (${playerSymbol})`
+      : `Máy đang suy nghĩ... [${diffText}]`;
+    const enLabel = isPlayerTurn
+      ? `Your turn (${playerSymbol})`
+      : `AI is thinking... [${diffText}]`;
+
+    elements.turnIndicator.setAttribute('data-vi', viLabel);
+    elements.turnIndicator.setAttribute('data-en', enLabel);
+    elements.turnIndicator.textContent = lang === 'en' ? enLabel : viLabel;
+    elements.turnIndicator.style.background = isPlayerTurn ? 'var(--primary-color)' : 'var(--text-color)';
+    elements.turnIndicator.style.color = isPlayerTurn ? '#ffffff' : 'var(--bg-color)';
+    elements.caroBoard.classList.toggle('not-my-turn', !isPlayerTurn);
+  }
+
   function updateOnlineTurnUI(turnPlayerName) {
     const isMe = turnPlayerName === state.myPlayerName;
     const symbol = state.onlinePlayers.indexOf(turnPlayerName) === 0 ? 'X' : 'O';
@@ -124,11 +148,19 @@ export function createCaroUi({ state, elements }) {
     elements.waitHostMessage.style.display = 'block';
   }
 
-  function showWinner({ winner, isDraw, reason }) {
+  function showWinner({ winner, isDraw, reason, isAiMode = false, isPlayerWin = false }) {
     const lang = getLang();
     let winMessage = '';
 
-    if (reason === 'opponent-left') {
+    if (isAiMode) {
+      if (isDraw) {
+        winMessage = lang === 'en' ? '🤝 Draw!' : '🤝 Hòa!';
+      } else if (isPlayerWin) {
+        winMessage = lang === 'en' ? '🎉 You win! Well done!' : '🎉 Bạn thắng! Xuất sắc!';
+      } else {
+        winMessage = lang === 'en' ? '🤖 AI wins! Better luck next time.' : '🤖 Máy thắng! Cố lên nhé!';
+      }
+    } else if (reason === 'opponent-left') {
       winMessage = lang === 'en'
         ? `🏆 ${winner} wins! (Opponent left)`
         : `🏆 ${winner} thắng! (Đối thủ rời đi)`;
@@ -138,18 +170,12 @@ export function createCaroUi({ state, elements }) {
       winMessage = lang === 'en' ? `🎉 ${winner} wins!` : `🎉 ${winner} chiến thắng!`;
     }
 
-    elements.winnerMessage.setAttribute(
-      'data-vi',
-      isDraw ? '🤝 Hòa!' : (reason ? winMessage : `🎉 ${winner} chiến thắng!`)
-    );
-    elements.winnerMessage.setAttribute(
-      'data-en',
-      isDraw ? '🤝 Draw!' : (reason ? winMessage : `🎉 ${winner} wins!`)
-    );
+    elements.winnerMessage.setAttribute('data-vi', winMessage);
+    elements.winnerMessage.setAttribute('data-en', winMessage);
     elements.winnerMessage.textContent = winMessage;
 
     const restartSpan = elements.btnRestart.querySelector('span');
-    if (state.isHost) {
+    if (isAiMode || state.isHost) {
       restartSpan.setAttribute('data-vi', 'Chơi lại');
       restartSpan.setAttribute('data-en', 'Play Again');
       restartSpan.textContent = lang === 'en' ? 'Play Again' : 'Chơi lại';
@@ -172,6 +198,7 @@ export function createCaroUi({ state, elements }) {
     showWinner,
     syncHostControls,
     triggerLangUpdate,
+    updateAiTurnUI,
     updateCellUI,
     updateLobbyPlayerList,
     updateOnlineTurnUI

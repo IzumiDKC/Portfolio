@@ -1,5 +1,6 @@
 export function createCaroState() {
   return {
+    // Online multiplayer
     board: [],
     isGameOver: false,
     socket: null,
@@ -7,6 +8,13 @@ export function createCaroState() {
     myPlayerName: '',
     isHost: false,
     onlinePlayers: [],
-    currentTurnName: ''
+    currentTurnName: '',
+
+    // AI mode
+    isAiMode: false,
+    playerSymbol: 'X',
+    aiSymbol: 'O',
+    isPlayerTurn: true,
+    difficulty: 'medium'  // 'easy' | 'medium' | 'hard'
   };
 }
