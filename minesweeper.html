@@ -86,7 +86,8 @@
       padding: 0.5rem 0;
     }
 
-    #minesweeper-board {
+    #minesweeper-board,
+    #solo-board {
       display: grid;
       grid-template-columns: repeat(10, 1fr);
       gap: 3px;
@@ -98,8 +99,8 @@
     .ms-cell {
       aspect-ratio: 1;
       border-radius: 6px;
-      background: rgba(99,102,241,0.08);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(148,163,255,0.13);
+      border: 1px solid rgba(148,163,255,0.22);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -111,8 +112,8 @@
       position: relative;
     }
     [data-theme="light"] .ms-cell {
-      background: rgba(99,102,241,0.06);
-      border-color: rgba(0,0,0,0.1);
+      background: rgba(99,102,241,0.09);
+      border-color: rgba(99,102,241,0.2);
     }
 
     .ms-cell.clickable {
@@ -147,14 +148,22 @@
     }
 
     /* Number colors */
-    .ms-cell.num-1 { color: #3b82f6; }
-    .ms-cell.num-2 { color: #22c55e; }
-    .ms-cell.num-3 { color: #ef4444; }
-    .ms-cell.num-4 { color: #7c3aed; }
-    .ms-cell.num-5 { color: #dc2626; }
-    .ms-cell.num-6 { color: #0891b2; }
-    .ms-cell.num-7 { color: #111827; }
-    .ms-cell.num-8 { color: #6b7280; }
+    .ms-cell.num-1 { color: #60a5fa; }
+    .ms-cell.num-2 { color: #34d399; }
+    .ms-cell.num-3 { color: #f87171; }
+    .ms-cell.num-4 { color: #a78bfa; }
+    .ms-cell.num-5 { color: #fb923c; }
+    .ms-cell.num-6 { color: #22d3ee; }
+    .ms-cell.num-7 { color: #e879f9; }
+    .ms-cell.num-8 { color: #94a3b8; }
+    [data-theme="light"] .ms-cell.num-1 { color: #2563eb; }
+    [data-theme="light"] .ms-cell.num-2 { color: #16a34a; }
+    [data-theme="light"] .ms-cell.num-3 { color: #dc2626; }
+    [data-theme="light"] .ms-cell.num-4 { color: #7c3aed; }
+    [data-theme="light"] .ms-cell.num-5 { color: #ea580c; }
+    [data-theme="light"] .ms-cell.num-6 { color: #0891b2; }
+    [data-theme="light"] .ms-cell.num-7 { color: #6d28d9; }
+    [data-theme="light"] .ms-cell.num-8 { color: #475569; }
 
     /* Animations */
     .ms-cell.just-revealed {
@@ -224,6 +233,85 @@
 
     /* Lobby max-width override */
     .ms-lobby-card { max-width: 480px; }
+
+    /* Mode selection */
+    .mode-select-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .mode-card {
+      background: rgba(148,163,255,0.07);
+      border: 1.5px solid rgba(148,163,255,0.18);
+      border-radius: 1rem;
+      padding: 1.4rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .mode-card:hover {
+      background: rgba(99,102,241,0.18);
+      border-color: var(--accent-primary);
+      transform: translateY(-2px);
+    }
+    .mode-card .mode-icon { font-size: 2.2rem; }
+    .mode-card .mode-label { font-weight: 700; font-size: 1rem; color: var(--text-primary); }
+    .mode-card .mode-desc  { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4; }
+
+    /* Solo screen */
+    #soloScreen { width: 100%; max-width: 600px; }
+    .solo-top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.8rem;
+    }
+    .solo-counters {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .solo-counter-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.2rem;
+      font-weight: 700;
+      background: rgba(148,163,255,0.1);
+      border: 1px solid rgba(148,163,255,0.2);
+      border-radius: 0.5rem;
+      padding: 0.35rem 0.9rem;
+    }
+    .solo-counter-chip.mines { color: #f87171; border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.08); }
+    .solo-counter-chip.timer { color: #34d399; border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.08); }
+    .solo-status-msg {
+      display: none;
+      text-align: center;
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 0.8rem;
+      background: rgba(148,163,255,0.1);
+      border: 1px solid rgba(148,163,255,0.25);
+      color: var(--text-primary);
+    }
+    .solo-status-msg.win  { background: rgba(52,211,153,0.15); border-color: rgba(52,211,153,0.4); color: #34d399; }
+    .solo-status-msg.lose { background: rgba(248,113,113,0.15); border-color: rgba(248,113,113,0.4); color: #f87171; }
+    .solo-actions {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
 
     /* ── Game-over banner (inline on play screen) ── */
     .game-over-banner {
@@ -314,8 +402,25 @@
         <!-- GAME CARD -->
         <div class="game-card ms-lobby-card">
 
-          <!-- 1. Lobby Screen -->
-          <div id="lobbyScreen" class="game-screen active">
+          <!-- Mode Selection Screen -->
+          <div id="modeScreen" class="game-screen active">
+            <h2 class="screen-title" style="text-align:center;">Chọn Chế Độ Chơi</h2>
+            <div class="mode-select-grid">
+              <div class="mode-card" id="btnPlaySolo">
+                <div class="mode-icon">🧍</div>
+                <div class="mode-label">Chơi Đơn</div>
+                <div class="mode-desc">Tự mình dò mìn. Thử thách tốc độ của bạn!</div>
+              </div>
+              <div class="mode-card" id="btnPlayMulti">
+                <div class="mode-icon">👥</div>
+                <div class="mode-label">Nhiều Người</div>
+                <div class="mode-desc">Đối đầu bạn bè trực tuyến theo lượt.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lobby Screen -->
+          <div id="lobbyScreen" class="game-screen">
 
             <!-- Name step -->
             <div id="lobbyNameStep">
@@ -379,6 +484,41 @@
 
         </div>
         <!-- end game-card lobby -->
+
+        <!-- SOLO SCREEN -->
+        <div id="soloScreen" class="game-screen">
+          <div class="solo-top-bar">
+            <div class="solo-counters">
+              <div class="solo-counter-chip mines">
+                <i class="fa-solid fa-bomb"></i>
+                <span id="soloMineCounter">15</span>
+              </div>
+              <div class="solo-counter-chip timer">
+                <i class="fa-solid fa-clock"></i>
+                <span id="soloTimer">00:00</span>
+              </div>
+            </div>
+            <div class="solo-actions">
+              <button class="game-btn btn-outline" id="btnBackFromSolo" style="padding:0.45rem 1rem; font-size:0.85rem;">
+                <i class="fa-solid fa-arrow-left"></i> Quay lại
+              </button>
+              <button class="game-btn btn-primary" id="soloBtnRestart" style="display:none; padding:0.45rem 1rem; font-size:0.85rem;">
+                <i class="fa-solid fa-rotate-right"></i> Chơi lại
+              </button>
+            </div>
+          </div>
+
+          <div id="soloStatus" class="solo-status-msg"></div>
+
+          <div class="ms-board-wrapper">
+            <div id="solo-board"></div>
+          </div>
+
+          <p class="ms-hint">
+            <i class="fa-solid fa-hand-pointer"></i> Click để mở ô &nbsp;|
+            <i class="fa-solid fa-flag"></i> Click phải để đặt cờ
+          </p>
+        </div>
 
         <!-- PLAY SCREEN – wider card -->
         <div id="playScreen" class="game-screen" style="width: 100%; max-width: 600px;">
@@ -489,6 +629,7 @@
   <script src="assets/js/shared/site/transitions.js"></script>
   <script src="assets/js/shared/site/boot.js"></script>
   <script type="module" src="assets/js/games/minesweeper/main.js"></script>
+  <script type="module" src="assets/js/games/minesweeper/solo.js"></script>
   <script>
     (function() {
       const rulesModal = document.getElementById('rulesModal');

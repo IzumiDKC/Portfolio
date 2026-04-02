@@ -56,7 +56,8 @@ const eliminatedBanner  = document.getElementById('eliminatedBanner');
 // ── Screen switching ─────────────────────────────────────────
 function showScreen(name) {
   document.querySelectorAll('.game-screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(name + 'Screen').classList.add('active');
+  const el = document.getElementById(name + 'Screen');
+  if (el) el.classList.add('active');
 }
 
 // ── Socket connection ─────────────────────────────────────────
@@ -461,8 +462,19 @@ btnStartOnline.addEventListener('click', () => {
 btnLeaveLobby.addEventListener('click', () => {
   socket.disconnect();
   socket = null;
-  location.reload();
+  // Return to mode screen instead of full reload
+  lobbyNameStep.style.display = 'block';
+  lobbyWaitStep.style.display = 'none';
+  showScreen('mode');
 });
+
+// ── btnPlayMulti (from mode screen) ─────────────────────────
+const btnPlayMulti = document.getElementById('btnPlayMulti');
+if (btnPlayMulti) {
+  btnPlayMulti.addEventListener('click', () => {
+    showScreen('lobby');
+  });
+}
 
 btnRestart.addEventListener('click', () => {
   if (isHost) socket.emit('play-again');
