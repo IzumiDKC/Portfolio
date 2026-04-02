@@ -47,6 +47,12 @@
     .difficulty-btn[data-difficulty="easy"]:not(.selected):hover  { color: #22c55e !important; border-color: rgba(34,197,94,0.4) !important; }
     .difficulty-btn[data-difficulty="medium"]:not(.selected):hover { color: #f59e0b !important; border-color: rgba(245,158,11,0.4) !important; }
     .difficulty-btn[data-difficulty="hard"]:not(.selected):hover  { color: #ef4444 !important; border-color: rgba(239,68,68,0.4) !important; }
+
+    /* ── Caro board: always make game-card wide enough for the board ── */
+    /* Lobby/gameover content is naturally compact; play screen needs space */
+    .game-card {
+      max-width: min(820px, calc(100vw - 40px));
+    }
   </style>
   <!-- Socket.IO Client -->
 

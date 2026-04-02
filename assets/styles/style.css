@@ -1712,7 +1712,7 @@ img { max-width: 100%; display: block; }
 
 .caro-board-container {
   overflow: auto;
-  max-width: 100%;
+  width: 100%;
   padding: 10px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: var(--radius-lg);
@@ -1729,26 +1729,23 @@ img { max-width: 100%; display: block; }
   margin: 0 auto;
 }
 
+/* Caro cell size: clamp(min, preferred, max)
+   Desktop (≥860px game-card): 34px  → 20col × 34px = 680px board
+   Tablet (600px): ~26px
+   Mobile (375px): 16px (fits within game-card - padding)
+   Formula uses 100vw minus card outline padding ~100px, divided by 20 cols */
 .caro-cell {
-  width: 32px;
-  height: 32px;
+  width: clamp(16px, calc((100vw - 100px) / 20), 34px);
+  height: clamp(16px, calc((100vw - 100px) / 20), 34px);
   background-color: var(--bg-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: clamp(0.55rem, calc((100vw - 100px) / 26), 1.2rem);
   font-weight: 800;
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
-}
-
-@media (max-width: 600px) {
-  .caro-cell {
-    width: 26px;
-    height: 26px;
-    font-size: 1rem;
-  }
 }
 
 .caro-cell:hover {
