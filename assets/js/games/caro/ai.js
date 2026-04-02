@@ -1,43 +1,37 @@
 import { BOARD_SIZE } from './constants.js';
 
-// ─── Heuristic scoring patterns ───────────────────────────────────────────────
-// Score a line of cells (e.g., 5 consecutive in any direction)
-// Returns the score contribution for `symbol` in that line
-
 const WIN_SCORE = 10_000_000;
 
-const SCORE_MAP = {
-  // [count, openEnds] => score
-  five:  WIN_SCORE,
-  four_open:  500_000,
-  four_closed: 50_000,
-  three_open: 50_000,
-  three_closed: 1_000,
-  two_open:   1_000,
-  two_closed:   100,
-};
-
+// ─── Pattern scoring – phân biệt rõ mức độ nguy hiểm ──────────────────────────
 function scoreSequence(count, openEnds) {
-  if (count >= 5) return SCORE_MAP.five;
-  if (count === 4) return openEnds >= 2 ? SCORE_MAP.four_open : SCORE_MAP.four_closed;
-  if (count === 3) return openEnds >= 2 ? SCORE_MAP.three_open : SCORE_MAP.three_closed;
-  if (count === 2) return openEnds >= 2 ? SCORE_MAP.two_open : SCORE_MAP.two_closed;
-  return 0;
+  if (count >= 5) return WIN_SCORE;
+  if (count === 4) {
+    if (openEnds >= 2) return 500_000;
+    if (openEnds === 1) return 100_000;
+    return 0;
+  }
+  if (count === 3) {
+    if (openEnds >= 2) return 50_000;
+    if (openEnds === 1) return 5_000;
+    return 0;
+  }
+  if (count === 2) {
+    if (openEnds >= 2) return 500;
+    if (openEnds === 1) return 50;
+    return 0;
+  }
+  return 10;
 }
 
-// Evaluate the board score for `symbol` from `attacker`'s perspective
+// ─── Evaluate board ───────────────────────────────────────────────────────────
 function evaluateBoard(board, symbol) {
-  const opponent = symbol === 'X' ? 'O' : 'X';
   const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
   let score = 0;
 
   for (let r = 0; r < BOARD_SIZE; r++) {
     for (let c = 0; c < BOARD_SIZE; c++) {
       for (const [dr, dc] of directions) {
-        // Count consecutive cells for `symbol`
         if (board[r][c] !== symbol) continue;
-
-        // Check if already counted (previous cell in same direction is same symbol)
         const pr = r - dr, pc = c - dc;
         if (pr >= 0 && pr < BOARD_SIZE && pc >= 0 && pc < BOARD_SIZE && board[pr][pc] === symbol) continue;
 
@@ -49,7 +43,6 @@ function evaluateBoard(board, symbol) {
           nc += dc;
         }
 
-        // Check open ends
         let openEnds = 0;
         const beforeR = r - dr, beforeC = c - dc;
         if (beforeR >= 0 && beforeR < BOARD_SIZE && beforeC >= 0 && beforeC < BOARD_SIZE && board[beforeR][beforeC] === null) openEnds++;
@@ -62,37 +55,72 @@ function evaluateBoard(board, symbol) {
   return score;
 }
 
-// ─── Candidate moves (cells near existing stones) ─────────────────────────────
-function getCandidates(board, radius = 2) {
-  const candidates = new Set();
+// ─── Threat scanner ───────────────────────────────────────────────────────────
+function scanThreats(board, symbol) {
+  const directions = [[0,1],[1,0],[1,1],[1,-1]];
+  let win4 = 0, open3 = 0, closed3 = 0, open2 = 0;
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (board[r][c] !== symbol) continue;
+      for (const [dr, dc] of directions) {
+        const pr = r - dr, pc = c - dc;
+        if (pr >= 0 && pr < BOARD_SIZE && pc >= 0 && pc < BOARD_SIZE && board[pr][pc] === symbol) continue;
+        let count = 0; let nr = r, nc = c;
+        while (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === symbol) { count++; nr += dr; nc += dc; }
+        let openEnds = 0;
+        if (r-dr >= 0 && r-dr < BOARD_SIZE && c-dc >= 0 && c-dc < BOARD_SIZE && board[r-dr][c-dc] === null) openEnds++;
+        if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === null) openEnds++;
+        if (count === 4 && openEnds >= 1) win4++;
+        else if (count === 3 && openEnds >= 2) open3++;
+        else if (count === 3 && openEnds === 1) closed3++;
+        else if (count === 2 && openEnds >= 2) open2++;
+      }
+    }
+  }
+  return { win4, open3, closed3, open2 };
+}
+
+// ─── Candidate moves ──────────────────────────────────────────────────────────
+function getCandidates(board, aiSym, humanSym, maxCount = 15) {
+  const seen = new Set();
   let hasAny = false;
 
   for (let r = 0; r < BOARD_SIZE; r++) {
     for (let c = 0; c < BOARD_SIZE; c++) {
       if (board[r][c] === null) continue;
       hasAny = true;
-      for (let dr = -radius; dr <= radius; dr++) {
-        for (let dc = -radius; dc <= radius; dc++) {
-          const nr = r + dr, nc = c + dc;
-          if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === null) {
-            candidates.add(nr * BOARD_SIZE + nc);
-          }
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+          const nr = r+dr, nc = c+dc;
+          if (nr>=0&&nr<BOARD_SIZE&&nc>=0&&nc<BOARD_SIZE&&board[nr][nc]===null)
+            seen.add(nr * BOARD_SIZE + nc);
         }
       }
     }
   }
 
-  // First move – play center
   if (!hasAny) {
     const center = Math.floor(BOARD_SIZE / 2);
-    candidates.add(center * BOARD_SIZE + center);
+    return [{ row: center, col: center }];
   }
 
-  return [...candidates].map(key => ({ row: Math.floor(key / BOARD_SIZE), col: key % BOARD_SIZE }));
+  const scored = [...seen].map(key => {
+    const row = Math.floor(key / BOARD_SIZE), col = key % BOARD_SIZE;
+    board[row][col] = aiSym;
+    const aiScore = evaluateBoard(board, aiSym);
+    board[row][col] = humanSym;
+    const humScore = evaluateBoard(board, humanSym);
+    board[row][col] = null;
+    // Hệ số 1.1 cho phòng thủ để ưu tiên chặn
+    return { row, col, score: aiScore + humScore * 1.1 };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, maxCount);
 }
 
 // ─── Win check ────────────────────────────────────────────────────────────────
-function checkWin(board, row, col, symbol) {
+export function checkWin(board, row, col, symbol) {
   const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
   for (const [dr, dc] of directions) {
     let count = 1;
@@ -111,17 +139,16 @@ function checkWin(board, row, col, symbol) {
   return false;
 }
 
-// ─── Minimax with Alpha-Beta Pruning ─────────────────────────────────────────
+// ─── Minimax ──────────────────────────────────────────────────────────────────
 function minimax(board, depth, alpha, beta, isMaximizing, aiSymbol, humanSymbol, lastMove) {
-  // Terminal checks
   if (lastMove && checkWin(board, lastMove.row, lastMove.col, isMaximizing ? humanSymbol : aiSymbol)) {
     return isMaximizing ? -WIN_SCORE - depth : WIN_SCORE + depth;
   }
   if (depth === 0) {
-    return evaluateBoard(board, aiSymbol) - evaluateBoard(board, humanSymbol);
+    return evaluateBoard(board, aiSymbol) - evaluateBoard(board, humanSymbol) * 1.1;
   }
 
-  const candidates = getCandidates(board);
+  const candidates = getCandidates(board, aiSymbol, humanSymbol, 12);
   if (candidates.length === 0) return 0;
 
   if (isMaximizing) {
@@ -149,6 +176,27 @@ function minimax(board, depth, alpha, beta, isMaximizing, aiSymbol, humanSymbol,
   }
 }
 
+// ─── Fork finder – tìm nước tạo 2+ mối đe dọa cùng lúc ───────────────────────
+function findForkMove(board, aiSym, humanSym, candidates) {
+  let bestFork = null;
+  let bestForkScore = 0;
+
+  for (const { row, col } of candidates) {
+    board[row][col] = aiSym;
+    const threats = scanThreats(board, aiSym);
+    const forkScore = threats.win4 * 10 + threats.open3 * 3 + threats.closed3;
+    board[row][col] = null;
+
+    if (forkScore > bestForkScore) {
+      bestForkScore = forkScore;
+      bestFork = { row, col };
+    }
+  }
+
+  if (bestForkScore >= 3) return bestFork;
+  return null;
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 /**
  * difficulty: 'easy' | 'medium' | 'hard'
@@ -156,47 +204,159 @@ function minimax(board, depth, alpha, beta, isMaximizing, aiSymbol, humanSymbol,
  */
 export function getBestMove(board, aiSymbol, difficulty = 'hard') {
   const humanSymbol = aiSymbol === 'X' ? 'O' : 'X';
+  const candidates = getCandidates(board, aiSymbol, humanSymbol, 20);
 
-  // Depth per difficulty
-  const depthMap = { easy: 1, medium: 2, hard: 4 };
-  const depth = depthMap[difficulty] ?? 4;
-
-  // Easy: 40% chance to play a random candidate move
-  const candidates = getCandidates(board);
-
-  if (difficulty === 'easy' && Math.random() < 0.45) {
-    return candidates[Math.floor(Math.random() * candidates.length)];
+  // ══════════════════════════════════════════════════════════════════════
+  // ĐỘ KHÓ: DỄ
+  // ══════════════════════════════════════════════════════════════════════
+  if (difficulty === 'easy') {
+    // 1. Thắng ngay
+    for (const { row, col } of candidates) {
+      board[row][col] = aiSymbol;
+      if (checkWin(board, row, col, aiSymbol)) { board[row][col] = null; return { row, col }; }
+      board[row][col] = null;
+    }
+    // 2. Chặn người thắng ngay
+    for (const { row, col } of candidates) {
+      board[row][col] = humanSymbol;
+      if (checkWin(board, row, col, humanSymbol)) { board[row][col] = null; return { row, col }; }
+      board[row][col] = null;
+    }
+    // 3. 50% random từ top candidates
+    if (Math.random() < 0.50) {
+      const topN = candidates.slice(0, Math.min(8, candidates.length));
+      return topN[Math.floor(Math.random() * topN.length)];
+    }
+    // 4. Minimax depth 1
+    let bestScore = -Infinity, bestMove = candidates[0];
+    for (const { row, col } of candidates.slice(0, 12)) {
+      board[row][col] = aiSymbol;
+      const score = minimax(board, 0, -Infinity, Infinity, false, aiSymbol, humanSymbol, { row, col });
+      board[row][col] = null;
+      if (score > bestScore) { bestScore = score; bestMove = { row, col }; }
+    }
+    return bestMove;
   }
 
-  // Immediately win if possible
+  // ══════════════════════════════════════════════════════════════════════
+  // ĐỘ KHÓ: TRUNG BÌNH
+  // ══════════════════════════════════════════════════════════════════════
+  if (difficulty === 'medium') {
+    // 1. Thắng ngay
+    for (const { row, col } of candidates) {
+      board[row][col] = aiSymbol;
+      if (checkWin(board, row, col, aiSymbol)) { board[row][col] = null; return { row, col }; }
+      board[row][col] = null;
+    }
+    // 2. Chặn người thắng ngay
+    for (const { row, col } of candidates) {
+      board[row][col] = humanSymbol;
+      if (checkWin(board, row, col, humanSymbol)) { board[row][col] = null; return { row, col }; }
+      board[row][col] = null;
+    }
+    // 3. Chặn open3 của người
+    const humanThreats = scanThreats(board, humanSymbol);
+    if (humanThreats.open3 >= 1) {
+      let bestBlock = null, bestBlockScore = -Infinity;
+      for (const { row, col } of candidates) {
+        board[row][col] = aiSymbol;
+        const after = scanThreats(board, humanSymbol);
+        board[row][col] = null;
+        const blockScore = (humanThreats.open3 - after.open3) * 1000 + (humanThreats.win4 - after.win4) * 5000;
+        if (blockScore > bestBlockScore) { bestBlockScore = blockScore; bestBlock = { row, col }; }
+      }
+      if (bestBlock && bestBlockScore > 0) return bestBlock;
+    }
+    // 4. Minimax depth 3
+    let bestScore = -Infinity, bestMove = candidates[0];
+    for (const { row, col } of candidates.slice(0, 15)) {
+      board[row][col] = aiSymbol;
+      const score = minimax(board, 2, -Infinity, Infinity, false, aiSymbol, humanSymbol, { row, col });
+      board[row][col] = null;
+      if (score > bestScore) { bestScore = score; bestMove = { row, col }; }
+    }
+    return bestMove;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // ĐỘ KHÓ: KHÓ (Hard) – CỰC KỲ TINH VI
+  // ══════════════════════════════════════════════════════════════════════
+
+  // 1. Thắng ngay
   for (const { row, col } of candidates) {
     board[row][col] = aiSymbol;
-    if (checkWin(board, row, col, aiSymbol)) {
-      board[row][col] = null;
-      return { row, col };
-    }
+    if (checkWin(board, row, col, aiSymbol)) { board[row][col] = null; return { row, col }; }
     board[row][col] = null;
   }
 
-  // Block opponent if about to win (skip for easy)
-  if (difficulty !== 'easy') {
-    for (const { row, col } of candidates) {
-      board[row][col] = humanSymbol;
-      if (checkWin(board, row, col, humanSymbol)) {
-        board[row][col] = null;
-        return { row, col };
-      }
-      board[row][col] = null;
+  // 2. Chặn người thắng ngay (TUYỆT ĐỐI ƯU TIÊN)
+  for (const { row, col } of candidates) {
+    board[row][col] = humanSymbol;
+    if (checkWin(board, row, col, humanSymbol)) { board[row][col] = null; return { row, col }; }
+    board[row][col] = null;
+  }
+
+  // 3. Tạo fork cho AI
+  const aiFork = findForkMove(board, aiSymbol, humanSymbol, candidates);
+  if (aiFork) {
+    const humanThreatsNow = scanThreats(board, humanSymbol);
+    if (humanThreatsNow.win4 === 0 && humanThreatsNow.open3 === 0) {
+      return aiFork;
     }
   }
 
-  // Run minimax
+  // 4. Chặn fork của người
+  const humanFork = findForkMove(board, humanSymbol, aiSymbol, candidates);
+  if (humanFork) {
+    const aiForkScore = aiFork ? (() => {
+      board[aiFork.row][aiFork.col] = aiSymbol;
+      const t = scanThreats(board, aiSymbol);
+      board[aiFork.row][aiFork.col] = null;
+      return t.win4 * 10 + t.open3 * 3;
+    })() : 0;
+    if (aiForkScore < 10) return humanFork;
+  }
+
+  // 5. Tạo 4 quân
+  for (const { row, col } of candidates) {
+    board[row][col] = aiSymbol;
+    const aiT = scanThreats(board, aiSymbol);
+    board[row][col] = null;
+    if (aiT.win4 >= 1) return { row, col };
+  }
+
+  // 6. Chặn 4 quân một đầu mở của người
+  for (const { row, col } of candidates) {
+    board[row][col] = humanSymbol;
+    const hT = scanThreats(board, humanSymbol);
+    board[row][col] = null;
+    if (hT.win4 >= 1) return { row, col };
+  }
+
+  // 7. Chặn open3 của người
+  const humanThreats = scanThreats(board, humanSymbol);
+  if (humanThreats.open3 >= 1) {
+    let bestBlock = null, bestBlockScore = -Infinity;
+    for (const { row, col } of candidates) {
+      board[row][col] = aiSymbol;
+      const after = scanThreats(board, humanSymbol);
+      const aiAfter = scanThreats(board, aiSymbol);
+      board[row][col] = null;
+      const blockScore = (humanThreats.open3 - after.open3) * 2000
+                       + (humanThreats.win4  - after.win4)  * 5000
+                       + aiAfter.win4 * 3000 + aiAfter.open3 * 500;
+      if (blockScore > bestBlockScore) { bestBlockScore = blockScore; bestBlock = { row, col }; }
+    }
+    if (bestBlock && bestBlockScore > 0) return bestBlock;
+  }
+
+  // 8. Minimax depth 4
   let bestScore = -Infinity;
   let bestMove = candidates[0];
 
-  for (const { row, col } of candidates) {
+  for (const { row, col } of candidates.slice(0, 15)) {
     board[row][col] = aiSymbol;
-    const score = minimax(board, depth - 1, -Infinity, Infinity, false, aiSymbol, humanSymbol, { row, col });
+    const score = minimax(board, 3, -Infinity, Infinity, false, aiSymbol, humanSymbol, { row, col });
     board[row][col] = null;
     if (score > bestScore) {
       bestScore = score;
@@ -206,5 +366,3 @@ export function getBestMove(board, aiSymbol, difficulty = 'hard') {
 
   return bestMove;
 }
-
-export { checkWin };
