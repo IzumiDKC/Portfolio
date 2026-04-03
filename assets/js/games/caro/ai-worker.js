@@ -42,8 +42,9 @@ class MLEngine {
 
   // Backward-propagate reward through the game trace using eligibility traces
   learn(result, openingKey) {
-    const reward = result === 'win' ? 1.0 : result === 'lose' ? -1.5 : 0.05;
-    const alpha = 0.3, gamma = 0.9;
+    // Stronger penalty for losing (-2.5), bigger win reward (1.5)
+    const reward = result === 'win' ? 1.5 : result === 'lose' ? -2.5 : 0.1;
+    const alpha = 0.4, gamma = 0.85;
     let disc = reward;
     for (let i = this.gameTrace.length - 1; i >= 0; i--) {
       const h = this.gameTrace[i];
@@ -62,20 +63,20 @@ class MLEngine {
     this.gameTrace = [];
   }
 
-  // Returns true when human repeatedly wins with same opening (≥3 uses, ≥60% win rate)
+  // Returns true when human repeatedly wins with same opening (≥1 game with ≥50% win rate)
   isExploitedOpening(humanMoves) {
     if (humanMoves.length < OPENING_K) return false;
     const key = humanMoves.slice(0, OPENING_K).join('|');
     const s = this.openingStats[key];
-    return s && s.count >= 3 && (s.humanWins / s.count) >= 0.6;
+    return s && s.count >= 1 && (s.humanWins / s.count) >= 0.5;
   }
 
-  // ML weight grows with experience (0 → 1.2 over 50 games)
+  // ML weight: strong from game 1, grows further with experience
   get mlWeight() {
-    if (this.gamesPlayed < 5)  return 0.05;
-    if (this.gamesPlayed < 20) return 0.35;
-    if (this.gamesPlayed < 50) return 0.7;
-    return 1.2;
+    if (this.gamesPlayed === 0) return 0.8;  // strong from the very first game
+    if (this.gamesPlayed < 5)  return 0.9;
+    if (this.gamesPlayed < 20) return 1.0;
+    return 1.5;
   }
 
   // Prune Q-table to MAX_QTABLE entries and serialize
@@ -235,6 +236,34 @@ function findRealFork(board, sym, candidates) {
   return best;
 }
 
+// ─── Detect open-ended threats: _XXXX_ and _XXX_ patterns ────────────────────
+// countWindowThreats uses strict 5-window; this catches open-ended sequences
+function detectOpenEndedThreats(board, sym) {
+  let open4 = 0, open3 = 0;
+  for (const [dr, dc] of DIRS) {
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        const cells = [];
+        let ok = true;
+        for (let i = 0; i < 6; i++) {
+          const nr = r + dr * i, nc = c + dc * i;
+          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) { ok = false; break; }
+          cells.push(board[nr][nc]);
+        }
+        if (!ok) continue;
+        // _XXXX_ — 4 in a row, both ends open
+        if (cells[0] === null && cells[5] === null) {
+          const mid = cells.slice(1, 5);
+          if (mid.every(v => v === sym)) open4++;
+          const symCount = mid.filter(v => v === sym).length;
+          if (symCount === 3 && mid.filter(v => v === null).length === 1) open3++;
+        }
+      }
+    }
+  }
+  return { open4, open3 };
+}
+
 // ─── Hard mode: threat-space + ML-guided minimax ──────────────────────────────
 function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
   // ── Priority rules 1-7 (absolute, unchanged) ──────────────────────────────
@@ -269,6 +298,19 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
     const hCur=countWindowThreats(board,humanSym);
     if (hCur.win4===0&&hCur.open3<2) return aiFork;
   }
+  // 4.5: Block human open-ended _XXXX_ (open-4) — highest urgency after win4
+  const hOpenBase = detectOpenEndedThreats(board, humanSym);
+  if (hOpenBase.open4 >= 1) {
+    let best=null, bS=-Infinity;
+    for (const {row,col} of candidates) {
+      board[row][col]=aiSym;
+      const after = detectOpenEndedThreats(board, humanSym);
+      board[row][col]=null;
+      const s = (hOpenBase.open4 - after.open4) * 20000 + (hOpenBase.open3 - after.open3) * 3000;
+      if (s > bS) { bS=s; best={row,col}; }
+    }
+    if (best && bS > 0) return best;
+  }
   // 6. Block human real fork
   const humanFork=findRealFork(board,humanSym,candidates);
   if (humanFork) return humanFork;
@@ -287,24 +329,24 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
     if (best&&bS>0) return best;
   }
 
-  // ── Step 8: ML-boosted minimax (adaptive) ────────────────────────────────
+  // ── Step 8: ML-boosted minimax (adaptive, depth=4 for maximum strength) ──
   const w = ml.mlWeight;
-  const pool = candidates.slice(0, 15);
+  const pool = candidates.slice(0, 10); // tight pool → depth-4 search stays fast
 
-  // Score every candidate: minimax + ML bias
+  // Score every candidate: minimax depth 4 + ML bias
   const scored = pool.map(({row, col}) => {
     board[row][col] = aiSym;
-    const mmScore = minimax(board, 3, -Infinity, Infinity, false, aiSym, humanSym, {row,col});
+    const mmScore = minimax(board, 4, -Infinity, Infinity, false, aiSym, humanSym, {row,col});
     board[row][col] = null;
-    const mlBias = w > 0 ? ml.getBias(board, row, col, aiSym) * w * 50_000 : 0;
+    const mlBias = w > 0 ? ml.getBias(board, row, col, aiSym) * w * 80_000 : 0;
     return { row, col, total: mmScore + mlBias };
   });
   scored.sort((a, b) => b.total - a.total);
 
-  // Adaptive disruption: if human repeatedly wins with same opening,
-  // randomize among top-3 candidates to break AI predictability
+  // Adaptive disruption: if human wins with same opening,
+  // randomize among top-2 to break AI predictability (activated after 1 game)
   if (ml.isExploitedOpening(humanMoves) && scored.length >= 2) {
-    const topK = scored.slice(0, Math.min(3, scored.length));
+    const topK = scored.slice(0, Math.min(2, scored.length));
     return topK[Math.floor(Math.random() * topK.length)];
   }
 
