@@ -83,8 +83,8 @@ export function createCoTuongUi({ state, elements }) {
   let piecesLayer = null;
   let highlightLayer = null;
 
-  function cx(col) { return PAD + col * CELL; }
-  function cy(row) { return PAD + row * CELL; }
+  function cx(col) { return PAD + (state.myColor === 'b' ? (COLS - 1 - col) : col) * CELL; }
+  function cy(row) { return PAD + (state.myColor === 'b' ? (ROWS - 1 - row) : row) * CELL; }
 
   function buildBoard(onCellClick) {
     const container = elements.boardContainer;
@@ -142,7 +142,8 @@ export function createCoTuongUi({ state, elements }) {
     svg.appendChild(linesG);
 
     // River label
-    const riverY = cy(4) + CELL / 2;
+    const y4 = cy(4), y5 = cy(5);
+    const riverY = (y4 + y5) / 2;
     const riverText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     riverText.setAttribute('x', SVG_W / 2);
     riverText.setAttribute('y', riverY + 6);
@@ -152,6 +153,9 @@ export function createCoTuongUi({ state, elements }) {
     riverText.setAttribute('fill', 'var(--ct-river-text, rgba(0,0,0,0.35))');
     riverText.setAttribute('letter-spacing', '24');
     riverText.textContent = '楚  河         漢  界';
+    if (state.myColor === 'b') {
+      riverText.setAttribute('transform', `rotate(180 ${SVG_W / 2} ${riverY})`);
+    }
     svg.appendChild(riverText);
 
     // Palace diagonals – Black (top)

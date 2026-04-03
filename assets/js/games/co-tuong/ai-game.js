@@ -138,16 +138,18 @@ export function createCoTuongAiGame({ state, elements, ui }) {
     return worker;
   }
 
-  function startGame(difficulty) {
+  function startGame(difficulty, playerSide = 'r') {
     if (worker) { worker.terminate(); worker = null; }
 
     // Reset state
     state.isGameOver = false;
     state.isAiMode = true;
     state.aiDifficulty = difficulty;
-    state.myColor = 'r';           // Player = Red, AI = Black
+    state.myColor = playerSide;
+    const aiColor = playerSide === 'r' ? 'b' : 'r';
+
     state.currentTurnColor = 'r';  // Red goes first
-    state.isPlayerTurn = true;
+    state.isPlayerTurn = (playerSide === 'r');
     state.selectedPiece = null;
     state.validMoves = [];
     state.lastMove = null;
@@ -156,8 +158,13 @@ export function createCoTuongAiGame({ state, elements, ui }) {
     // Build initial board
     state.board = createInitialBoard();
 
-    if (elements.redNameEl) elements.redNameEl.textContent = ui.getLang() === 'en' ? 'You (Red)' : 'Bạn (Đỏ)';
-    if (elements.blackNameEl) elements.blackNameEl.textContent = `AI (${diffLabel(difficulty)})`;
+    const isEn = ui.getLang() === 'en';
+    if (elements.redNameEl) {
+      elements.redNameEl.textContent = playerSide === 'r' ? (isEn ? 'You (Red)' : 'Bạn (Đỏ)') : `AI (${diffLabel(difficulty)}) - Đỏ`;
+    }
+    if (elements.blackNameEl) {
+      elements.blackNameEl.textContent = playerSide === 'b' ? (isEn ? 'You (Black)' : 'Bạn (Đen)') : `AI (${diffLabel(difficulty)}) - Đen`;
+    }
     if (elements.roomBadge) elements.roomBadge.style.display = 'none';
     if (elements.historyLog) elements.historyLog.innerHTML = '';
 
@@ -167,7 +174,14 @@ export function createCoTuongAiGame({ state, elements, ui }) {
     ui.updateTurnUI({ isAI: true, color: 'r' });
     ui.updatePlayerTimes(state.playerTimes, 0);
     ui.showScreen(elements.playScreen);
-    ui.startAiTimer(0); // player's timer starts
+    
+    if (playerSide === 'r') {
+      ui.startAiTimer(0); // player's timer starts
+    } else {
+      ui.updateTurnUI({ isAI: true, color: 'r' });
+      aiThinking = true;
+      setTimeout(triggerAiMove, 500);
+    }
   }
 
   function diffLabel(d) {
@@ -229,12 +243,13 @@ export function createCoTuongAiGame({ state, elements, ui }) {
     const captured = state.board[toRow][toCol];
 
     ui.stopAiTimer();
+    const aiColor = state.myColor === 'r' ? 'b' : 'r';
     state.board[toRow][toCol] = piece;
     state.board[fromRow][fromCol] = null;
     state.selectedPiece = null;
     state.validMoves = [];
     state.lastMove = { fromRow, fromCol, toRow, toCol };
-    state.currentTurnColor = 'b';
+    state.currentTurnColor = aiColor;
     state.isPlayerTurn = false;
 
     ui.applyMove(fromRow, fromCol, toRow, toCol, piece, captured);
@@ -242,7 +257,6 @@ export function createCoTuongAiGame({ state, elements, ui }) {
     ui.showLastMove(fromRow, fromCol, toRow, toCol);
     ui.addMoveLog(ui.getLang() === 'en' ? 'You' : 'Bạn', piece, fromRow, fromCol, toRow, toCol, captured);
 
-    const aiColor = 'b';
     const inChk = isInCheck(state.board, aiColor);
     if (inChk) {
       const king = findKing(state.board, aiColor);
@@ -259,7 +273,7 @@ export function createCoTuongAiGame({ state, elements, ui }) {
     }
 
     // Switch timer to AI (no actual decrement for AI)
-    ui.updateTurnUI({ isAI: true, color: 'b' });
+    ui.updateTurnUI({ isAI: true, color: aiColor });
 
     // Small delay for realism then trigger AI
     aiThinking = true;
@@ -269,7 +283,8 @@ export function createCoTuongAiGame({ state, elements, ui }) {
   function triggerAiMove() {
     if (state.isGameOver) { aiThinking = false; return; }
     const boardSnapshot = state.board.map(r => r.map(c => c ? { ...c } : null));
-    getWorker().postMessage({ board: boardSnapshot, color: 'b', difficulty: state.aiDifficulty });
+    const aiColor = state.myColor === 'r' ? 'b' : 'r';
+    getWorker().postMessage({ board: boardSnapshot, color: aiColor, difficulty: state.aiDifficulty });
   }
 
   function handleWorkerMessage({ data: move }) {
@@ -283,7 +298,7 @@ export function createCoTuongAiGame({ state, elements, ui }) {
 
     state.board[toRow][toCol] = piece;
     state.board[fromRow][fromCol] = null;
-    state.currentTurnColor = 'r';
+    state.currentTurnColor = state.myColor;
     state.isPlayerTurn = true;
     state.lastMove = { fromRow, fromCol, toRow, toCol };
 
@@ -292,7 +307,7 @@ export function createCoTuongAiGame({ state, elements, ui }) {
     ui.showLastMove(fromRow, fromCol, toRow, toCol);
     ui.addMoveLog('AI', piece, fromRow, fromCol, toRow, toCol, captured);
 
-    const playerColor = 'r';
+    const playerColor = state.myColor;
     const inChk = isInCheck(state.board, playerColor);
     if (inChk) {
       const king = findKing(state.board, playerColor);
@@ -308,8 +323,8 @@ export function createCoTuongAiGame({ state, elements, ui }) {
       return;
     }
 
-    ui.updateTurnUI({ isAI: true, color: 'r' });
-    ui.startAiTimer(0); // resume player's timer
+    ui.updateTurnUI({ isAI: true, color: state.myColor });
+    ui.startAiTimer(state.myColor === 'r' ? 0 : 1); // resume player's timer
   }
 
   function resign() {

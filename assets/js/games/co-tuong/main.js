@@ -190,10 +190,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Side buttons – visual only (player always Red, AI always Black)
+  let selectedSide = 'r';
   elements.sideBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       elements.sideBtns.forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
+      selectedSide = btn.dataset.side;
     });
   });
 
@@ -201,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.aiSetupModal.classList.remove('active');
     state.isAiMode = true;
     aiGame = createCoTuongAiGame({ state, elements, ui });
-    aiGame.startGame(selectedDifficulty);
+    aiGame.startGame(selectedDifficulty, selectedSide);
   });
 
   // ── Online Lobby ─────────────────────────────────────────────
