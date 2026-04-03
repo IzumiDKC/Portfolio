@@ -145,7 +145,7 @@ export function createCaroAiGame({ state, elements, ui }) {
       // Loop display: cycle through 1..12 indefinitely
       const displayStep = ((probeStep - 1) % 12) + 1;
       ui.updateThinkingStatus(displayStep, 12);
-    }, 400);
+    }, 220);
   }
 
   function stopProbeAnimation() {

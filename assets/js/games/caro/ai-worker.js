@@ -416,6 +416,27 @@ self.onmessage = function({ data }) {
   const { board, aiSymbol, difficulty } = data;
   const humanSymbol = aiSymbol === 'X' ? 'O' : 'X';
   const humanMoves  = data.humanMoves || [];
+
+  // ── Opening shortcut: if ≤1 piece on board, no need for heavy computation ──
+  const piecesOnBoard = board.flat().filter(v => v !== null).length;
+  if (piecesOnBoard === 0) {
+    const ct = Math.floor(BOARD_SIZE / 2);
+    self.postMessage({ row: ct, col: ct }); return;
+  }
+  if (piecesOnBoard === 1) {
+    // Find the one piece and play adjacent
+    let pr = -1, pc = -1;
+    outer: for (let r = 0; r < BOARD_SIZE; r++)
+      for (let c = 0; c < BOARD_SIZE; c++)
+        if (board[r][c] !== null) { pr = r; pc = c; break outer; }
+    const offsets = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    const choices = offsets
+      .map(([dr,dc]) => ({ row: pr+dr, col: pc+dc }))
+      .filter(({row,col}) => row>=0&&row<BOARD_SIZE&&col>=0&&col<BOARD_SIZE&&board[row][col]===null);
+    const pick = choices[Math.floor(Math.random() * choices.length)] || { row: pr, col: pc+1 };
+    self.postMessage(pick); return;
+  }
+
   const candidates  = getCandidates(board, aiSymbol, humanSymbol, 20);
 
   // EASY ──────────────────────────────────────────────────────────────────────
