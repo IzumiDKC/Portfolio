@@ -129,6 +129,10 @@ export function createMemoryOnline({ state, elements, ui, onCardClick }) {
       ui.playFreezeEffect(playerName);
     });
 
+    state.socket.on('memory-rotate-board', ({ rotationDegrees }) => {
+      elements.memoryBoard.style.transform = `rotate(${rotationDegrees}deg)`;
+    });
+
     state.socket.on('game-ended', ({ winner, status }) => {
       state.isGameOver = true;
       setTimeout(() => {

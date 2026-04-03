@@ -36,6 +36,22 @@ function nextValidTurn(room) {
   }
 }
 
+function checkRotation(room, io, roomCode) {
+  const { memoryGame } = room;
+  if (!memoryGame) return;
+  const progress = memoryGame.matched.length / (memoryGame.pairCount * 2);
+  const targetMultiplier = (memoryGame.rotationCount || 0) + 1;
+  
+  if (targetMultiplier <= 3 && progress >= 0.25 * targetMultiplier) {
+    memoryGame.rotationCount = targetMultiplier;
+    setTimeout(() => {
+      io.to(roomCode).emit('memory-rotate-board', { 
+        rotationDegrees: memoryGame.rotationCount * 90 
+      });
+    }, 500); // 0.5s after match
+  }
+}
+
 function startMemoryTurnTimer(room, io, roomCode) {
   if (room.memoryGame.turnTimeout) {
     clearTimeout(room.memoryGame.turnTimeout);
@@ -111,7 +127,8 @@ function startMemoryGame(room, io, roomCode) {
     boardSize: boardSize,
     pairCount: pairCount,
     columns: columns,
-    rows: rows
+    rows: rows,
+    rotationCount: 0
   };
 
   io.to(roomCode).emit('game-started', {
@@ -188,6 +205,7 @@ function handleMemoryFlip(room, socket, io, roomCode, { cardIndex }) {
       // Match
       memoryGame.matched.push(firstIndex, secondIndex);
       memoryGame.scores[socket.playerName] += 1;
+      checkRotation(room, io, roomCode);
       
       setTimeout(() => {
         io.to(roomCode).emit('memory-match', {
@@ -273,6 +291,7 @@ function handleMemoryUseHint(room, socket, io, roomCode) {
   memoryGame.flipped.push(secondIndex);
   memoryGame.matched.push(firstIndex, secondIndex);
   memoryGame.scores[socket.playerName] += 1;
+  checkRotation(room, io, roomCode);
 
   // Emit the magic flip
   io.to(roomCode).emit('memory-card-flipped', {
@@ -365,7 +384,8 @@ function resetMemoryGame(room) {
         boardSize: boardSize,
         pairCount: pairCount,
         columns: columns,
-        rows: rows
+        rows: rows,
+        rotationCount: 0
     };
   } else {
      room.memoryGame = null;

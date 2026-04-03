@@ -24,6 +24,7 @@ export function createMemoryUi({ state, elements }) {
   function initClientBoard(onCardClick, boardSize = 42, columns = 7, rows = 6) {
     elements.memoryBoard.innerHTML = '';
     elements.memoryBoard.classList.remove('not-my-turn');
+    elements.memoryBoard.style.transform = 'rotate(0deg)';
     
     elements.memoryBoard.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
     elements.memoryBoard.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
