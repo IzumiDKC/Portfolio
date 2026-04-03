@@ -125,6 +125,10 @@ export function createMemoryOnline({ state, elements, ui, onCardClick }) {
       ui.unflipCards(firstIndex, secondIndex);
     });
 
+    state.socket.on('memory-freeze-effect', ({ playerName }) => {
+      ui.playFreezeEffect(playerName);
+    });
+
     state.socket.on('game-ended', ({ winner, status }) => {
       state.isGameOver = true;
       setTimeout(() => {

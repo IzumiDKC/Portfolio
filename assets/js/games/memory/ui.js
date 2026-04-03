@@ -135,6 +135,27 @@ export function createMemoryUi({ state, elements }) {
     }
   }
 
+  function playFreezeEffect(playerName) {
+    const overlay = document.createElement('div');
+    overlay.className = 'freeze-overlay active';
+    overlay.innerHTML = `<div style="font-size: 5rem; animation: pulse 1s infinite;">🧊</div><h2 style="color: #fff; margin-top:10px;">${playerName} bị đóng băng!</h2>`;
+    document.body.appendChild(overlay);
+    
+    Object.assign(overlay.style, {
+      position: 'fixed', top: '0', left: '0', width: '100%', height: '100%',
+      background: 'rgba(59, 130, 246, 0.4)', backdropFilter: 'blur(3px)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      zIndex: '9999', pointerEvents: 'none', transition: 'opacity 0.5s'
+    });
+
+    setTimeout(() => {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 500);
+    }, 1500);
+    
+    addLog(playerName, getLang() === 'en' ? 'flipped a Freeze card! Lost turn & next turn skipped.' : 'lật trúng Thẻ Băng! Bị đóng băng & mất lượt tiếp theo.');
+  }
+
   function flipCard(cardIndex, emoji) {
     const card = elements.memoryBoard.children[cardIndex];
     const back = card.querySelector('.memory-card-back');
@@ -240,6 +261,7 @@ export function createMemoryUi({ state, elements }) {
     updateLobbyPlayerList,
     updateOnlineTurnUI,
     updateScoresUI,
-    startTimerBar
+    startTimerBar,
+    playFreezeEffect
   };
 }

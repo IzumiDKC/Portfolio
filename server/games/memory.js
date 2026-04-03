@@ -12,6 +12,8 @@ function shuffleDeck(pairCount, totalCards) {
   const selected = EMOJIS.slice(0, pairCount);
   const deck = [...selected, ...selected];
   
+  deck.push('🧊', '🧊');
+  
   if (totalCards > deck.length) {
     deck.push(DISTRACTION_EMOJI);
   }
@@ -21,6 +23,17 @@ function shuffleDeck(pairCount, totalCards) {
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
   return deck;
+}
+
+function nextValidTurn(room) {
+  for (let i = 0; i < room.players.length; i++) {
+    room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
+    if (room.memoryGame.skipTurns && room.memoryGame.skipTurns[room.currentTurnIndex] > 0) {
+      room.memoryGame.skipTurns[room.currentTurnIndex]--;
+    } else {
+      break;
+    }
+  }
 }
 
 function startMemoryTurnTimer(room, io, roomCode) {
@@ -61,7 +74,7 @@ function handleMemoryTimeout(room, io, roomCode) {
   memoryGame.processingFlip = false;
 
   // Pass to the next player
-  room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
+  nextValidTurn(room);
   startMemoryTurnTimer(room, io, roomCode);
 }
 
@@ -84,7 +97,7 @@ function startMemoryGame(room, io, roomCode) {
   }
   
   const boardSize = columns * rows;
-  const pairCount = Math.floor(boardSize / 2);
+  const pairCount = Math.floor((boardSize - 2) / 2);
 
   room.memoryGame = {
     deck: shuffleDeck(pairCount, boardSize),
@@ -92,6 +105,7 @@ function startMemoryGame(room, io, roomCode) {
     matched: [], 
     scores: initialScores,
     hints: initialHints,
+    skipTurns: {},
     processingFlip: false,
     turnTimeout: null,
     boardSize: boardSize,
@@ -122,18 +136,43 @@ function handleMemoryFlip(room, socket, io, roomCode, { cardIndex }) {
     return;
   }
 
-  const { memoryGame } = room;
-  
-  if (memoryGame.flipped.includes(cardIndex)) return;
-  if (memoryGame.matched.includes(cardIndex)) return;
-  
+  const flippedEmoji = memoryGame.deck[cardIndex];
   memoryGame.flipped.push(cardIndex);
   
   io.to(roomCode).emit('memory-card-flipped', {
     cardIndex,
-    emoji: memoryGame.deck[cardIndex],
+    emoji: flippedEmoji,
     playerName: socket.playerName
   });
+
+  if (flippedEmoji === '🧊') {
+    if (memoryGame.turnTimeout) clearTimeout(memoryGame.turnTimeout);
+    memoryGame.processingFlip = true;
+    
+    if (!memoryGame.skipTurns) memoryGame.skipTurns = {};
+    memoryGame.skipTurns[room.currentTurnIndex] = (memoryGame.skipTurns[room.currentTurnIndex] || 0) + 1;
+
+    setTimeout(() => {
+      io.to(roomCode).emit('memory-freeze-effect', {
+        playerName: socket.playerName
+      });
+      
+      const firstIndex = memoryGame.flipped[0];
+      const secondIndex = memoryGame.flipped[1] !== undefined ? memoryGame.flipped[1] : null;
+
+      io.to(roomCode).emit('memory-unflip', {
+        firstIndex,
+        secondIndex
+      });
+
+      memoryGame.flipped = [];
+      memoryGame.processingFlip = false;
+
+      nextValidTurn(room);
+      startMemoryTurnTimer(room, io, roomCode);
+    }, 1500);
+    return;
+  }
   
   if (memoryGame.flipped.length === 2) {
     if (memoryGame.turnTimeout) clearTimeout(memoryGame.turnTimeout);
@@ -176,7 +215,7 @@ function handleMemoryFlip(room, socket, io, roomCode, { cardIndex }) {
         memoryGame.processingFlip = false;
         
         // Switch turn
-        room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
+        nextValidTurn(room);
         startMemoryTurnTimer(room, io, roomCode);
       }, 1300);
     }
@@ -205,8 +244,8 @@ function handleMemoryUseHint(room, socket, io, roomCode) {
   const firstIndex = memoryGame.flipped[0];
   const targetEmoji = memoryGame.deck[firstIndex];
   
-  if (targetEmoji === DISTRACTION_EMOJI) {
-    socket.emit('play-error', { message: 'Ô đánh lạc hướng không có cặp để dùng gợi ý!' });
+  if (targetEmoji === DISTRACTION_EMOJI || targetEmoji === '🧊') {
+    socket.emit('play-error', { message: 'Ô này không có cặp để dùng gợi ý!' });
     return;
   }
   
@@ -253,7 +292,7 @@ function handleMemoryUseHint(room, socket, io, roomCode) {
       endMemoryGameNormally(room, io, roomCode);
     } else {
       // Logic: turn passes to NEXT player when hint is used!
-      room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
+      nextValidTurn(room);
       startMemoryTurnTimer(room, io, roomCode);
     }
   }, 1000);
@@ -307,7 +346,7 @@ function resetMemoryGame(room) {
     }
     
     const boardSize = columns * rows;
-    const pairCount = Math.floor(boardSize / 2);
+    const pairCount = Math.floor((boardSize - 2) / 2);
 
     room.memoryGame = {
         deck: shuffleDeck(pairCount, boardSize),
@@ -315,6 +354,7 @@ function resetMemoryGame(room) {
         matched: [],
         scores: initialScores,
         hints: initialHints,
+        skipTurns: {},
         processingFlip: false,
         turnTimeout: null,
         boardSize: boardSize,
