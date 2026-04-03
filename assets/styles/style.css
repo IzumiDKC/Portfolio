@@ -1756,6 +1756,25 @@ img { max-width: 100%; display: block; }
   cursor: not-allowed;
 }
 
+/* Hard mode: no hover reveal when AI is thinking — hides intent */
+.caro-board.hard-thinking .caro-cell:not([class*='cell-']) {
+  background-color: var(--bg-color) !important;
+  cursor: not-allowed;
+}
+
+/* AI ghost probe: briefly flashes before committing */
+.caro-cell.ai-probe {
+  background-color: rgba(239, 68, 68, 0.12) !important;
+  box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.25);
+  transition: background-color 0.08s ease;
+}
+.caro-cell.ai-probe::after {
+  content: '?';
+  font-size: 0.65em;
+  color: rgba(239, 68, 68, 0.4);
+  font-weight: 900;
+}
+
 .cell-x {
   color: #3b82f6; /* Blue for X */
 }

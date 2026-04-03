@@ -30,7 +30,8 @@ export function createCaroAiGame({ state, elements, ui }) {
       saveMLData(mlData);
       return;
     }
-    // Move response
+    // Stop probe animation and commit the real move
+    stopProbeAnimation();
     if (state.isGameOver) return;
     const aiLabel = ui.getLang() === 'en' ? 'AI' : 'Máy';
     placeMove(msg.row, msg.col, state.aiSymbol, aiLabel);
@@ -88,8 +89,72 @@ export function createCaroAiGame({ state, elements, ui }) {
       board:      boardSnapshot,
       aiSymbol:   state.aiSymbol,
       difficulty: state.difficulty,
-      humanMoves: state.humanMoveList   // for ML opening detection in hard mode
+      humanMoves: state.humanMoveList
     });
+
+    // Hard mode: animate ghost probes while worker is computing
+    if (state.difficulty === 'hard') {
+      startProbeAnimation();
+    }
+  }
+
+  // ── Probe animation: flash ghost cells to simulate AI "trying" moves ──────
+  let probeTimer = null;
+  let probeStep  = 0;
+
+  function startProbeAnimation() {
+    stopProbeAnimation();
+    probeStep = 0;
+    const BOARD_SIZE = state.board.length;
+    const totalSteps = 6 + Math.floor(Math.random() * 5); // 6–10 fake probes
+
+    probeTimer = setInterval(() => {
+      // Clear previous probe cell
+      const prev = elements.caroBoard.querySelector('.ai-probe');
+      if (prev) prev.classList.remove('ai-probe');
+
+      probeStep++;
+      if (probeStep > totalSteps) {
+        stopProbeAnimation();
+        return;
+      }
+
+      // Pick a random empty cell near existing pieces
+      const emptyCells = [];
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          if (state.board[r][c] === null) {
+            // Only cells near existing pieces (within ±3)
+            let hasNeighbor = false;
+            outer: for (let dr = -3; dr <= 3; dr++) {
+              for (let dc = -3; dc <= 3; dc++) {
+                const nr = r + dr, nc = c + dc;
+                if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && state.board[nr][nc] !== null) {
+                  hasNeighbor = true; break outer;
+                }
+              }
+            }
+            if (hasNeighbor) emptyCells.push(r * BOARD_SIZE + c);
+          }
+        }
+      }
+
+      if (emptyCells.length > 0) {
+        const idx = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        const cell = elements.caroBoard.children[idx];
+        if (cell && !cell.classList.contains('cell-x') && !cell.classList.contains('cell-o')) {
+          cell.classList.add('ai-probe');
+        }
+      }
+
+      ui.updateThinkingStatus(probeStep, totalSteps);
+    }, 120);
+  }
+
+  function stopProbeAnimation() {
+    if (probeTimer) { clearInterval(probeTimer); probeTimer = null; }
+    const prev = elements.caroBoard.querySelector('.ai-probe');
+    if (prev) prev.classList.remove('ai-probe');
   }
 
   // ── After game ends, trigger ML learning (hard mode only) ────────────────

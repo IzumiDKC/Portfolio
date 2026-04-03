@@ -83,6 +83,19 @@ export function createCaroUi({ state, elements }) {
     elements.turnIndicator.style.background = isPlayerTurn ? 'var(--primary-color)' : 'var(--text-color)';
     elements.turnIndicator.style.color = isPlayerTurn ? '#ffffff' : 'var(--bg-color)';
     elements.caroBoard.classList.toggle('not-my-turn', !isPlayerTurn);
+    // Hard mode: toggle special class to suppress hover hints
+    elements.caroBoard.classList.toggle('hard-thinking', !isPlayerTurn && difficulty === 'hard');
+  }
+
+  // Live probe status update — called while AI is exploring candidate moves
+  function updateThinkingStatus(step, total) {
+    if (!elements.turnIndicator) return;
+    const lang = getLang();
+    const dots = '.'.repeat((step % 3) + 1).padEnd(3, ' ');
+    const text = lang === 'en'
+      ? `AI probing move ${step}/${total}${dots}`
+      : `Máy đang thử nước ${step}/${total}${dots}`;
+    elements.turnIndicator.textContent = text;
   }
 
   function updateOnlineTurnUI(turnPlayerName) {
@@ -209,6 +222,7 @@ export function createCaroUi({ state, elements }) {
     updateAiTurnUI,
     updateCellUI,
     updateLobbyPlayerList,
-    updateOnlineTurnUI
+    updateOnlineTurnUI,
+    updateThinkingStatus
   };
 }
