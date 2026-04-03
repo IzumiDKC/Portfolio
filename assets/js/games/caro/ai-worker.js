@@ -236,6 +236,88 @@ function moveCreatesFork(board, row, col, sym) {
          (t.broken4 >= 1 && t.open3 >= 1);
 }
 
+// ─── Find empty ends of consecutive N-length lines (for blocking) ────────────
+// If requireBothOpen=true, only returns ends of lines that have BOTH ends open (open-4)
+// If requireBothOpen=false, returns any open end of a consecutive N-length line
+function findLineEndBlocks(board, sym, n, requireBothOpen) {
+  const spots = [];
+  const visited = new Set();
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (board[r][c] !== sym) continue;
+      for (const [dr, dc] of DIRS) {
+        // Normalize to start of consecutive run
+        let sr = r, sc = c;
+        while (sr - dr >= 0 && sr - dr < BOARD_SIZE &&
+               sc - dc >= 0 && sc - dc < BOARD_SIZE &&
+               board[sr - dr][sc - dc] === sym) {
+          sr -= dr; sc -= dc;
+        }
+        const key = `${sr},${sc},${dr},${dc}`;
+        if (visited.has(key)) continue;
+        visited.add(key);
+
+        // Count consecutive
+        let count = 0, er = sr, ec = sc;
+        while (er >= 0 && er < BOARD_SIZE && ec >= 0 && ec < BOARD_SIZE && board[er][ec] === sym) {
+          count++; er += dr; ec += dc;
+        }
+        if (count !== n) continue;
+
+        const bR = sr - dr, bC = sc - dc;
+        const aR = er, aC = ec;
+        const beforeOpen = bR >= 0 && bR < BOARD_SIZE && bC >= 0 && bC < BOARD_SIZE && board[bR][bC] === null;
+        const afterOpen = aR >= 0 && aR < BOARD_SIZE && aC >= 0 && aC < BOARD_SIZE && board[aR][aC] === null;
+
+        if (requireBothOpen) {
+          if (beforeOpen && afterOpen) {
+            spots.push({ row: bR, col: bC });
+            spots.push({ row: aR, col: aC });
+          }
+        } else {
+          if (beforeOpen && !afterOpen) spots.push({ row: bR, col: bC });
+          else if (afterOpen && !beforeOpen) spots.push({ row: aR, col: aC });
+          // If both open, it's actually an open-4, but return both as blocking options
+          else if (beforeOpen && afterOpen) {
+            spots.push({ row: bR, col: bC });
+            spots.push({ row: aR, col: aC });
+          }
+        }
+      }
+    }
+  }
+  return spots;
+}
+
+// ─── Find gap positions in gapped-4 patterns (X_XXX, XX_XX, XXX_X) ──────────
+function findGapBlocks(board, sym) {
+  const spots = [];
+  for (const [dr, dc] of DIRS) {
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        let ok = true;
+        const w5 = [];
+        for (let i = 0; i < 5; i++) {
+          const nr = r + dr * i, nc = c + dc * i;
+          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) { ok = false; break; }
+          w5.push({ val: board[nr][nc], r: nr, c: nc });
+        }
+        if (!ok) continue;
+        let sc5 = 0, gaps = 0, gapIdx = -1, oc5 = 0;
+        for (let i = 0; i < 5; i++) {
+          if (w5[i].val === sym) sc5++;
+          else if (w5[i].val === null) { gaps++; gapIdx = i; }
+          else oc5++;
+        }
+        if (sc5 === 4 && gaps === 1 && oc5 === 0) {
+          spots.push({ row: w5[gapIdx].r, col: w5[gapIdx].c });
+        }
+      }
+    }
+  }
+  return spots;
+}
+
 // ─── Window-of-5 evaluation (used inside minimax) ────────────────────────────
 function scoreWindow(cells, symbol) {
   let mine = 0, opp_cnt = 0;
@@ -393,21 +475,24 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
     board[row][col] = null;
   }
 
-  // ── Priority 3: Block human open-4 (_XXXX_) — always unstoppable next move ─
+  // ── Priority 3: Block human open-4 (_XXXX_) — find the blocking spots directly ─
   if (hT.open4 >= 1) {
-    let best = null, bS = -Infinity;
-    for (const {row,col} of candidates) {
-      board[row][col] = aiSym;
-      const after = fastThreatsAt(board, row, col, humanSym);
-      board[row][col] = null;
-      // If placing here removes human threats on lines through this cell
-      const s = -after.open4 * 500000 - after.broken4 * 50000;
-      if (s > bS) { bS = s; best = {row,col}; }
+    const blockSpots = findLineEndBlocks(board, humanSym, 4, true);
+    if (blockSpots.length > 0) {
+      // Pick the block that also creates best AI threat
+      let best = blockSpots[0], bestB = -1;
+      for (const {row,col} of blockSpots) {
+        board[row][col] = aiSym;
+        const t = fastThreatsAt(board, row, col, aiSym);
+        board[row][col] = null;
+        const b = t.broken4 * 1000 + t.open3 * 100;
+        if (b > bestB) { bestB = b; best = {row,col}; }
+      }
+      return best;
     }
-    if (best) return best;
   }
 
-  // ── Priority 4: AI creates open-4 or broken-4 ─────────────────────────────
+  // ── Priority 4: AI creates open-4 or double broken-4 ──────────────────────
   for (const {row,col} of candidates) {
     board[row][col] = aiSym;
     const t = fastThreatsAt(board, row, col, aiSym);
@@ -417,44 +502,41 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
 
   // ── Priority 5: Block human broken-4 (XXXX_, XX_XX, etc.) ────────────────
   if (hT.broken4 >= 1) {
-    for (const {row,col} of candidates) {
-      board[row][col] = aiSym;
-      const after = fastThreatsAt(board, row, col, humanSym);
-      board[row][col] = null;
-      // If this cell blocks a broken4 line
-      if (after.broken4 === 0) return {row,col};
-    }
+    // For consecutive broken-4: find the one open end
+    const blockSpots = findLineEndBlocks(board, humanSym, 4, false);
+    if (blockSpots.length > 0) return blockSpots[0];
+    // For gapped broken-4 (X_XXX, XX_XX, XXX_X): find the gap
+    const gapSpots = findGapBlocks(board, humanSym);
+    if (gapSpots.length > 0) return gapSpots[0];
   }
 
-  // ── Priority 6: AI creates a single broken-4 (XXXX_) ─────────────────────
-  for (const {row,col} of candidates) {
-    board[row][col] = aiSym;
-    const t = fastThreatsAt(board, row, col, aiSym);
-    board[row][col] = null;
-    if (t.broken4 >= 1) {
-      // Check it doesn't leave human a fork or worse
-      if (hT.open3 < 2 && hT.broken4 === 0) return {row,col};
-    }
-  }
-
-  // ── Priority 7: Block human fork (≥2 simultaneous threats) ────────────
+  // ── Priority 6: Block human fork (≥2 simultaneous threats) ────────────────
   const humanForkMoves = candidates.filter(({row,col}) => moveCreatesFork(board, row, col, humanSym));
   if (humanForkMoves.length > 0) {
-    // If AI can create a broken4 while blocking, do that; otherwise block directly
+    // Try to create AI broken-4 while blocking the fork
     for (const {row,col} of humanForkMoves) {
       board[row][col] = aiSym;
       const aiAfter = fastThreatsAt(board, row, col, aiSym);
       board[row][col] = null;
       if (aiAfter.broken4 >= 1) return {row,col};
     }
-    // Otherwise pick the blocking move that leaves fewest human threats
+    // Otherwise pick the blocking move that reduces the most human threats
     return findBestBlock(board, humanSym, humanForkMoves) || humanForkMoves[0];
   }
 
-  // ── Priority 8: AI creates a fork ─────────────────────────────────
+  // ── Priority 7: AI creates a fork ─────────────────────────────────────────
   const aiForkMoves = candidates.filter(({row,col}) => moveCreatesFork(board, row, col, aiSym));
-  if (aiForkMoves.length > 0 && hT.open3 < 1 && hT.broken4 === 0) {
+  if (aiForkMoves.length > 0) {
     return aiForkMoves[0];
+  }
+
+  // ── Priority 8: AI creates a single broken-4 (XXXX_) ─────────────────────
+  // Only attack when human has no immediate fork threat
+  for (const {row,col} of candidates) {
+    board[row][col] = aiSym;
+    const t = fastThreatsAt(board, row, col, aiSym);
+    board[row][col] = null;
+    if (t.broken4 >= 1) return {row,col};
   }
 
   // ── Priority 9: Block human open-3 threats aggressively ─────────────────
@@ -531,10 +613,20 @@ self.onmessage = function({ data }) {
     const pick = choices[Math.floor(Math.random() * choices.length)] || { row: pr, col: pc+1 };
     self.postMessage(pick); return;
   }
-  // With ≤5 pieces, no real 3-in-a-row threats exist → skip classifyThreats/minimax
-  // getCandidates already scores by (aiEval + humanEval×2.5), top-1 is safe & instant
-  if (piecesOnBoard <= 5) {
+  // With ≤3 pieces, no real threats exist → fast path
+  if (piecesOnBoard <= 3) {
     const earlyCands = getCandidates(board, aiSymbol, humanSymbol, 10);
+    // Still check for immediate win/block even in early game
+    for (const {row,col} of earlyCands) {
+      board[row][col] = aiSymbol;
+      if (checkWin(board,row,col,aiSymbol)) { board[row][col]=null; self.postMessage({row,col}); return; }
+      board[row][col] = null;
+    }
+    for (const {row,col} of earlyCands) {
+      board[row][col] = humanSymbol;
+      if (checkWin(board,row,col,humanSymbol)) { board[row][col]=null; self.postMessage({row,col}); return; }
+      board[row][col] = null;
+    }
     self.postMessage(earlyCands[0]); return;
   }
 
