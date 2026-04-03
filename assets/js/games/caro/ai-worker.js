@@ -352,8 +352,8 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
     }
   }
 
-  // ── Priority 7: Block human fork (≥2 simultaneous threats) ───────────────
-  const humanForkMoves = candidates.filter(({row,col}) => moveCreatesFork(board, humanSym, row, col));
+  // ── Priority 7: Block human fork (≥2 simultaneous threats) ────────────
+  const humanForkMoves = candidates.filter(({row,col}) => moveCreatesFork(board, row, col, humanSym));
   if (humanForkMoves.length > 0) {
     // If AI can create a broken4 while blocking, do that; otherwise block directly
     for (const {row,col} of humanForkMoves) {
@@ -366,8 +366,8 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
     return findBestBlock(board, humanSym, humanForkMoves) || humanForkMoves[0];
   }
 
-  // ── Priority 8: AI creates a fork ─────────────────────────────────────────
-  const aiForkMoves = candidates.filter(({row,col}) => moveCreatesFork(board, aiSym, row, col));
+  // ── Priority 8: AI creates a fork ─────────────────────────────────
+  const aiForkMoves = candidates.filter(({row,col}) => moveCreatesFork(board, row, col, aiSym));
   if (aiForkMoves.length > 0 && hT.open3 < 1 && hT.broken4 === 0) {
     return aiForkMoves[0];
   }
@@ -389,13 +389,17 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
     if (best && bS > 0) return best;
   }
 
-  // ── Priority 10: ML-boosted minimax depth-5 ───────────────────────────────
+  // ── Priority 10: ML-boosted minimax (adaptive depth) ────────────────────
   const w = ml.mlWeight;
-  const pool = candidates.slice(0, 9);
+  // Count pieces to determine depth: fewer pieces = shallower (less branching penalty)
+  let pieceCount = 0;
+  for (let r = 0; r < BOARD_SIZE; r++) for (let c = 0; c < BOARD_SIZE; c++) if (board[r][c]) pieceCount++;
+  const depth = pieceCount < 4 ? 3 : pieceCount < 12 ? 4 : 4; // depth-3 early, depth-4 otherwise
+  const pool = candidates.slice(0, 7); // tighter pool keeps time under 500ms
 
   const scored = pool.map(({row, col}) => {
     board[row][col] = aiSym;
-    const mmScore = minimax(board, 5, -Infinity, Infinity, false, aiSym, humanSym, {row,col});
+    const mmScore = minimax(board, depth, -Infinity, Infinity, false, aiSym, humanSym, {row,col});
     board[row][col] = null;
     const mlBias = w > 0 ? ml.getBias(board, row, col, aiSym) * w * 100_000 : 0;
     return { row, col, total: mmScore + mlBias };
