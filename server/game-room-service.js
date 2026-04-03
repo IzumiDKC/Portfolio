@@ -48,6 +48,12 @@ const {
   resetCoCaNguaGame,
   endCoCaNguaBecauseOpponentLeft
 } = require('./games/co-ca-ngua');
+const {
+  startCoTuongGame,
+  handleCoTuongMove,
+  resetCoTuongGame,
+  endCoTuongBecauseOpponentLeft
+} = require('./games/co-tuong');
 
 const rooms = {};
 
@@ -183,6 +189,11 @@ function registerGameHandlers(io) {
         return;
       }
 
+      if (room.gameType === 'co-tuong') {
+        startCoTuongGame(room, io, code);
+        return;
+      }
+
       startSecretNumberGame(room, io, code);
     });
 
@@ -264,6 +275,12 @@ function registerGameHandlers(io) {
       if (room) handleCoCaNguaMove(room, socket, io, code, { pieceIndex });
     });
 
+    socket.on('co-tuong-move', ({ fromRow, fromCol, toRow, toCol }) => {
+      const code = socket.roomCode;
+      const room = rooms[code];
+      if (room) handleCoTuongMove(room, socket, io, code, { fromRow, fromCol, toRow, toCol });
+    });
+
     socket.on('play-again', () => {
       const code = socket.roomCode;
       const room = rooms[code];
@@ -277,6 +294,7 @@ function registerGameHandlers(io) {
       resetMinesweeperGame(room);
       resetGoGame(room);
       resetCoCaNguaGame(room);
+      resetCoTuongGame(room);
 
       io.to(code).emit('back-to-lobby', {
         players: room.players.map((player) => player.name)
@@ -328,6 +346,8 @@ function registerGameHandlers(io) {
           endGoBecauseOpponentLeft(room, io, code);
         } else if (room.gameType === 'co-ca-ngua') {
           endCoCaNguaBecauseOpponentLeft(room, io, code);
+        } else if (room.gameType === 'co-tuong') {
+          endCoTuongBecauseOpponentLeft(room, io, code);
         } else {
           endSecretNumberBecauseOpponentLeft(room, io, code);
         }

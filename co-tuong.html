@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark" data-lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-vi="Cờ Tướng – Điền Nguyễn (Iyu)" data-en="Xiangqi (Chinese Chess) – Dien Nguyen (Iyu)">Cờ Tướng – Điền Nguyễn (Iyu)</title>
+  <meta name="description" content="Chơi Cờ Tướng (Xiangqi) với AI 3 cấp độ hoặc multiplayer online. Bàn cờ 9×10 đầy đủ luật." />
+  <script>(function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="assets/styles/style.css" />
+  <link rel="stylesheet" href="assets/styles/game-common.css" />
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    /* ── Cờ Tướng color tokens ── */
+    :root {
+      --ct-board-color: #d4a054;
+      --ct-board-shadow: rgba(0,0,0,0.5);
+      --ct-red: #e84040;
+      --ct-black: #1a1a2e;
+      --ct-overlay: rgba(0, 0, 0, 0.75);
+      --ct-card-bg: var(--card-bg, rgba(30, 30, 35, 0.4));
+      --ct-text-primary: var(--text-primary, #f1f5f9);
+      --ct-selection: rgba(99, 102, 241, 0.15);
+    }
+    [data-theme="light"] {
+      --ct-board-color: #f1c27d;
+      --ct-board-shadow: rgba(0,0,0,0.1);
+      --ct-black: #2c2c3e;
+      --ct-overlay: rgba(15, 23, 42, 0.4);
+      --ct-card-bg: #ffffff;
+      --ct-text-primary: #0f172a;
+      --ct-selection: rgba(99, 102, 241, 0.1);
+      --ct-line-color: rgba(60, 40, 20, 0.5);
+      --ct-river-text: rgba(60, 40, 20, 0.3);
+    }
+
+    /* ── Widen the game card for chess ── */
+    .game-card {
+      max-width: 720px !important;
+      width: 100% !important;
+    }
+
+    /* ── Board container ── */
+    .ct-play-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      width: 100%;
+    }
+
+    .ct-board-wrap {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      overflow: hidden; /* no scroll – SVG scales instead */
+    }
+
+    #ctBoard {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #ctBoard svg {
+      box-shadow: 0 8px 40px var(--ct-board-shadow);
+      border-radius: 10px;
+      transition: opacity 0.2s;
+      width: 100% !important;
+      height: auto !important;
+    }
+
+    /* ── Info bar ── */
+    .ct-info-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      width: 100%;
+      max-width: 620px;
+      padding: 0.65rem 1rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+    }
+
+    .ct-player-info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+      font-size: 0.82rem;
+      min-width: 90px;
+    }
+
+    .ct-player-name {
+      font-weight: 700;
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .ct-color-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .ct-color-dot.red { background: var(--ct-red); box-shadow: 0 0 6px var(--ct-red); }
+    .ct-color-dot.black { background: #666; }
+
+    .player-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      border: 1.5px solid transparent;
+      transition: all 0.3s;
+    }
+    .player-time.time-active {
+      color: var(--primary-color);
+      border-color: var(--primary-color);
+      background: rgba(var(--primary-rgb), 0.08);
+      animation: timePulse 1s ease-in-out infinite;
+    }
+    .player-time.time-low { color: #ef4444 !important; border-color: #ef4444 !important; background: rgba(239,68,68,0.08) !important; }
+
+    .ct-captured {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      min-height: 1.2em;
+      font-family: 'Noto Serif SC', serif;
+    }
+
+    /* ── Timer ring ── */
+    .timer-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .timer-ring-bg { fill: none; stroke: var(--border-color); stroke-width: 4; }
+    #timerRing {
+      fill: none;
+      stroke-width: 4;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: center;
+      transition: stroke-dasharray 0.9s linear, stroke 0.3s;
+      stroke: var(--primary-color);
+    }
+    .timer-text-center {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .timer-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+
+    /* ── Mode screen ── */
+    .mode-choices {
+      display: flex;
+      gap: 1rem;
+      flex-direction: column;
+      margin-top: 1rem;
+    }
+    .mode-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.25rem 1.5rem;
+      background: var(--card-bg);
+      border: 1.5px solid var(--border-color);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+    }
+    .mode-card:hover {
+      border-color: var(--primary-color);
+      background: rgba(var(--primary-rgb), 0.08);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px -5px rgba(var(--primary-rgb), 0.2);
+    }
+    .mode-card-icon {
+      font-size: 2.5rem;
+      min-width: 56px;
+      text-align: center;
+    }
+    .mode-card-text h3 { margin: 0 0 0.2rem; font-size: 1.05rem; color: var(--ct-text-primary); }
+    .mode-card-text p { margin: 0; font-size: 0.82rem; color: var(--text-secondary); }
+
+    /* ── AI Setup Modal ── */
+    .ai-setup-modal {
+      position: fixed; inset: 0;
+      background: var(--ct-overlay);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;  /* above everything */
+      opacity: 0; pointer-events: none;
+      transition: all 0.3s ease;
+    }
+    .ai-setup-modal.active { opacity: 1; pointer-events: all; }
+    .ai-modal-content {
+      background: var(--ct-card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 2.5rem 2rem 2rem;
+      width: min(450px, 92vw);
+      position: relative;
+      box-shadow: 0 25px 60px -12px rgba(0,0,0,0.25);
+    }
+    .ai-modal-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin: 0 0 1.5rem;
+      text-align: center;
+      color: var(--ct-text-primary);
+    }
+    .ai-modal-close {
+      position: absolute; top: 1.25rem; right: 1.25rem;
+      background: rgba(0,0,0,0.05); border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 1.2rem;
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .ai-modal-close:hover {
+      background: #ef4444;
+      color: white;
+    }
+
+    /* ── Setup section label ── */
+    .setup-section { margin-bottom: 1.5rem; }
+    .setup-label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Side selection (Đỏ / Đen) ── */
+    .side-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .side-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 1.1rem 0.75rem;
+      background: var(--bg-secondary, rgba(255,255,255,0.04));
+      border: 2.5px solid var(--border-color, rgba(255,255,255,0.1));
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--ct-text-primary);
+    }
+    .side-btn:hover { border-color: var(--primary-color); }
+    .side-btn.selected {
+      border-color: var(--primary-color);
+      background: var(--ct-selection, rgba(99,102,241,0.12));
+    }
+    .side-btn .side-icon {
+      font-size: 1.8rem;
+      font-family: 'Noto Serif SC', serif;
+      line-height: 1;
+    }
+    .side-btn.red .side-icon { color: var(--ct-red, #e84040); }
+    .side-btn.black .side-icon { color: #777; }
+    .side-btn .side-name { font-weight: 700; font-size: 0.9rem; }
+    .side-btn .side-desc { font-size: 0.72rem; color: var(--text-muted); }
+    .side-btn.selected .side-name { color: var(--primary-color); }
+
+    /* ── Difficulty grid ── */
+    .difficulty-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .difficulty-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.9rem 0.5rem;
+      background: var(--bg-secondary, rgba(255,255,255,0.04));
+      border: 2.5px solid var(--border-color, rgba(255,255,255,0.1));
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--ct-text-primary);
+    }
+    .difficulty-btn:hover { border-color: var(--primary-color); }
+    .difficulty-btn.selected {
+      border-color: var(--primary-color);
+      background: var(--ct-selection, rgba(99,102,241,0.12));
+    }
+    .difficulty-btn .diff-icon { font-size: 1.6rem; }
+    .difficulty-btn .diff-name { font-weight: 700; font-size: 0.88rem; }
+    .difficulty-btn.selected .diff-name { color: var(--primary-color); }
+
+    [data-theme="light"] .side-btn,
+    [data-theme="light"] .difficulty-btn {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+    }
+    [data-theme="light"] .side-btn.selected,
+    [data-theme="light"] .difficulty-btn.selected {
+      background: rgba(99,102,241,0.1);
+    }
+
+    /* ── Start button ── */
+    #btnStartAi {
+      margin-top: 0.5rem;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: #fff !important;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 0.9rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.3);
+    }
+    #btnStartAi:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(99,102,241,0.4);
+    }
+
+    /* ── Action buttons ── */
+    .ct-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn-resign {
+      background: rgba(239,68,68,0.08);
+      border: 1.5px solid #ef4444;
+      color: #ef4444;
+      font-weight: 600;
+    }
+    .btn-resign:hover:not(:disabled) { background: #ef4444; color: #fff; }
+    .btn-resign:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* Piece animations */
+    @keyframes piecePlace {
+      from { transform: scale(0.5); opacity: 0.6; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+    @keyframes pieceCaptured {
+      from { transform: scale(1); opacity: 1; }
+      to   { transform: scale(1.4) rotate(20deg); opacity: 0; }
+    }
+    @keyframes checkPulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    @keyframes timePulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* ── Game Result Overlay ── */
+    .game-result-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(3px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      border-radius: inherit;
+    }
+    .game-result-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .game-result-card {
+      background: var(--ct-card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 2rem 2.5rem;
+      text-align: center;
+      max-width: 320px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      transform: scale(0.85);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .game-result-overlay.active .game-result-card {
+      transform: scale(1);
+    }
+    .game-result-overlay[data-win="player"] .game-result-icon { color: #22c55e; }
+    .game-result-overlay[data-win="ai"] .game-result-icon { color: #ef4444; }
+    .game-result-overlay:not([data-win]) .game-result-icon { color: var(--primary-color); }
+    .game-result-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .game-result-msg {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--ct-text-primary);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .game-result-actions { display: flex; flex-direction: column; gap: 0.75rem; }
+    .game-result-actions .game-btn { width: 100%; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .ct-info-bar { flex-wrap: wrap; justify-content: center; }
+      .difficulty-grid { grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; }
+    }
+  </style>
+</head>
+<body class="game-page">
+
+  <!-- Connecting Overlay -->
+  <div id="connectingOverlay" class="connecting-overlay">
+    <div class="spinner"></div>
+    <p data-vi="Đang kết nối đến server..." data-en="Connecting to server...">Đang kết nối đến server...</p>
+  </div>
+
+  <nav id="navbar" class="scrolled">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">iyu<span class="logo-dot">.</span></a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="about.html" class="nav-link" data-vi="Về tôi" data-en="About">Về tôi</a></li>
+        <li><a href="experience.html" class="nav-link" data-vi="Kinh nghiệm" data-en="Experience">Kinh nghiệm</a></li>
+        <li><a href="skills.html" class="nav-link" data-vi="Kỹ năng" data-en="Skills">Kỹ năng</a></li>
+        <li><a href="collection.html" class="nav-link active" data-vi="Bộ sưu tập" data-en="Collection">Bộ sưu tập</a></li>
+        <li><a href="contact.html" class="nav-link" data-vi="Liên hệ" data-en="Contact">Liên hệ</a></li>
+      </ul>
+      <div class="nav-controls">
+        <button id="langToggle" class="nav-ctrl-btn" title="Switch language">EN</button>
+        <button id="themeToggle" class="nav-ctrl-btn" title="Toggle theme"><i class="fa-solid fa-sun"></i></button>
+        <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    <section class="game-section">
+      <div class="container game-container" style="display:flex;flex-direction:column;align-items:center;">
+
+        <!-- Header -->
+        <div class="game-header text-center">
+          <span class="section-tag" data-vi="AI + Online Multiplayer" data-en="AI + Online Multiplayer">AI + Online Multiplayer</span>
+          <h1 class="section-title" data-vi="Cờ Tướng" data-en="Xiangqi (Chinese Chess)">Cờ Tướng</h1>
+          <p class="game-subtitle" data-vi="Cờ Tướng truyền thống Việt Nam. Bàn cờ 9×10 · AI 3 cấp độ · Chơi online 2 người." data-en="Classic Vietnamese Chess on a 9×10 board · 3 AI levels · 2-player online.">
+            Cờ Tướng truyền thống. Bàn cờ 9×10 · AI 3 cấp độ · Chơi online 2 người.
+          </p>
+          <button class="btn-rules mt-2" onclick="document.getElementById('rulesModal').classList.add('active')">
+            <i class="fa-solid fa-circle-question"></i> <span data-vi="Luật chơi" data-en="Rules">Luật chơi</span>
+          </button>
+        </div>
+
+        <!-- APP SCREENS -->
+        <div class="game-card">
+
+          <!-- 0. Mode Select -->
+          <div id="modeScreen" class="game-screen active">
+            <h2 class="screen-title" data-vi="Chọn chế độ chơi" data-en="Choose Game Mode">Chọn chế độ chơi</h2>
+            <div class="mode-choices">
+              <button class="mode-card" id="btnPlayAi">
+                <div class="mode-card-icon">🤖</div>
+                <div class="mode-card-text">
+                  <h3 data-vi="Chơi với Máy" data-en="Play vs AI">Chơi với Máy</h3>
+                  <p data-vi="AI 3 cấp độ: Dễ · Trung bình · Khó" data-en="3 AI levels: Easy · Medium · Hard">AI 3 cấp độ: Dễ · Trung bình · Khó</p>
+                </div>
+              </button>
+              <button class="mode-card" id="btnPlayOnline">
+                <div class="mode-card-icon">🌐</div>
+                <div class="mode-card-text">
+                  <h3 data-vi="Chơi Online" data-en="Play Online">Chơi Online</h3>
+                  <p data-vi="Multiplayer 2 người qua Socket.IO" data-en="2-player multiplayer via Socket.IO">Multiplayer 2 người qua Socket.IO</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- 1. Online Lobby -->
+          <div id="lobbyScreen" class="game-screen">
+            <div id="lobbyNameStep">
+              <h2 class="screen-title" data-vi="Tham gia Multiplayer" data-en="Join Multiplayer">Tham gia Multiplayer</h2>
+              <div class="input-group">
+                <label for="onlineName" data-vi="Tên hiển thị:" data-en="Display name:">Tên hiển thị:</label>
+                <input type="text" id="onlineName" class="game-input" placeholder="Ví dụ: Player123" maxlength="15" />
+              </div>
+              <div class="online-actions">
+                <button class="game-btn btn-primary" id="btnCreateRoom">
+                  <i class="fa-solid fa-plus"></i> <span data-vi="Tạo Phòng Mới" data-en="Create New Room">Tạo Phòng Mới</span>
+                </button>
+                <div class="divider"><span data-vi="HOẶC" data-en="OR">HOẶC</span></div>
+                <button class="game-btn btn-outline" id="btnShowJoin">
+                  <i class="fa-solid fa-right-to-bracket"></i> <span data-vi="Tham Gia Bằng Mã" data-en="Join By Code">Tham Gia Bằng Mã</span>
+                </button>
+              </div>
+              <div class="join-room-group" id="joinRoomGroup">
+                <input type="text" class="game-input" id="roomCodeInput" placeholder="Nhập mã phòng" maxlength="6" style="text-transform:uppercase;" />
+                <button class="game-btn btn-primary" id="btnJoinRoom">
+                  <span data-vi="Vào Phòng" data-en="Enter Room">Vào Phòng</span>
+                </button>
+              </div>
+              <div id="lobbyStatus" class="status-message"></div>
+            </div>
+
+            <div id="lobbyWaitStep" style="display:none;">
+              <h2 class="screen-title" data-vi="Phòng Chờ" data-en="Waiting Room">Phòng Chờ</h2>
+              <div class="room-info-card">
+                <p data-vi="Mã phòng:" data-en="Room Code:">Mã phòng:</p>
+                <div class="room-code-display" id="roomCodeDisplay">
+                  <span id="roomCodeText">------</span>
+                  <button class="copy-btn" id="btnCopyCode" title="Copy"><i class="fa-regular fa-copy"></i></button>
+                </div>
+                <p class="small-text mt-1 text-muted" data-vi="Gửi mã này cho bạn bè." data-en="Share this code with a friend.">Gửi mã này cho bạn bè.</p>
+              </div>
+              <div class="lobby-players">
+                <h3><span data-vi="Người Chơi (" data-en="Players (">Người Chơi (</span><span id="playerCountLabel">0</span>/2)</h3>
+                <ul id="lobbyPlayerList"></ul>
+              </div>
+              <div id="lobbyWaitStatus" class="status-message"></div>
+              <div class="button-group mt-3" style="gap:1rem;flex-wrap:wrap;">
+                <button class="game-btn btn-outline" id="btnLeaveLobby" style="flex:1;">
+                  <i class="fa-solid fa-arrow-left"></i> <span data-vi="Rời Phòng" data-en="Leave">Rời Phòng</span>
+                </button>
+                <button class="game-btn btn-primary" id="btnStartOnline" disabled style="flex:1;">
+                  <span data-vi="Bắt Đầu" data-en="Start Game">Bắt Đầu</span> <i class="fa-solid fa-play"></i>
+                </button>
+                <div id="waitHostMessage" style="display:none;width:100%;text-align:center;padding:12px;background:rgba(99,102,241,0.1);border-radius:8px;border:1px dashed rgba(99,102,241,0.3);color:var(--text-primary);font-weight:500;">
+                  <i class="fa-solid fa-hourglass-half fa-spin" style="color:var(--primary-color);"></i>
+                  <span data-vi="Đang chờ chủ phòng bắt đầu..." data-en="Waiting for host to start...">Đang chờ chủ phòng bắt đầu...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Play Screen -->
+          <div id="playScreen" class="game-screen">
+            <div class="play-header">
+              <span class="room-badge" id="roomBadge" style="display:none;" title="Room Code">🎮 ROOM</span>
+              <div class="turn-indicator" id="turnIndicator">Đang tải...</div>
+            </div>
+
+            <div class="ct-play-content">
+              <!-- Info bar -->
+              <div class="ct-info-bar">
+                <!-- Red player -->
+                <div class="ct-player-info">
+                  <div class="ct-player-name">
+                    <span class="ct-color-dot red"></span>
+                    <span id="redName" data-vi="Đỏ" data-en="Red">Đỏ</span>
+                  </div>
+                  <div id="redTime" class="player-time">5:00</div>
+                  <div class="ct-captured" id="capturedRed"></div>
+                </div>
+
+                <!-- Timer ring -->
+                <div class="timer-wrap">
+                  <div style="position:relative;width:52px;height:52px;">
+                    <svg width="52" height="52" viewBox="0 0 52 52" style="position:absolute;top:0;left:0;">
+                      <circle class="timer-ring-bg" cx="26" cy="26" r="18"/>
+                      <circle id="timerRing" cx="26" cy="26" r="18"
+                        style="stroke-dasharray:113.1 113.1; transform:rotate(-90deg); transform-origin:26px 26px;"/>
+                    </svg>
+                    <div class="timer-text-center"><span id="timerText">5:00</span></div>
+                  </div>
+                  <div class="timer-label" data-vi="còn lại" data-en="left">còn lại</div>
+                </div>
+
+                <!-- Black player -->
+                <div class="ct-player-info">
+                  <div class="ct-player-name">
+                    <span class="ct-color-dot black"></span>
+                    <span id="blackName" data-vi="Đen" data-en="Black">Đen</span>
+                  </div>
+                  <div id="blackTime" class="player-time">5:00</div>
+                  <div class="ct-captured" id="capturedBlack"></div>
+                </div>
+              </div>
+
+              <!-- Board -->
+              <div class="ct-board-wrap" style="position:relative;">
+                <div id="ctBoard"></div>
+
+                <!-- Game Result Overlay (over board) -->
+                <div class="game-result-overlay" id="gameResultOverlay">
+                  <div class="game-result-card">
+                    <div class="game-result-icon">🏆</div>
+                    <div class="game-result-msg" id="gameResultMsg"></div>
+                    <div class="game-result-actions">
+                      <button class="game-btn btn-primary" id="btnRestartOverlay">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span data-vi="Chơi lại" data-en="Play Again">Chơi lại</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="ct-actions">
+                <button class="game-btn btn-resign" id="btnResign" disabled>
+                  <i class="fa-solid fa-flag"></i>
+                  <span data-vi="Đầu hàng" data-en="Resign">Đầu hàng</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- History -->
+            <div class="history-panel mt-3">
+              <h3 data-vi="Nhật ký nước đi" data-en="Move History">Nhật ký nước đi</h3>
+              <div class="history-log" id="historyLog"></div>
+            </div>
+          </div>
+
+          <!-- 3. Game Over -->
+          <div id="gameOverScreen" class="game-screen text-center">
+            <h2 class="screen-title mb-2 text-gradient" data-vi="Kết Thúc!" data-en="Game Over!">Kết Thúc!</h2>
+            <div class="winner-box p-3 mb-3" style="background:rgba(var(--primary-rgb),0.1);border-radius:12px;border:1px solid var(--primary-color);">
+              <h3 id="winnerMessage" style="color:var(--primary-color);font-size:1.5rem;margin:0;"></h3>
+            </div>
+            <button class="game-btn btn-primary mt-2" id="btnRestart">
+              <i class="fa-solid fa-rotate-right"></i> <span data-vi="Chơi lại" data-en="Play Again">Chơi lại</span>
+            </button>
+          </div>
+
+        </div><!-- .game-card -->
+      </div>
+    </section>
+
+    <div class="page-nav-bar">
+      <div class="container">
+        <a href="games.html" class="page-nav-btn btn-ghost"><i class="fa-solid fa-arrow-left"></i> <span data-vi="Trò chơi" data-en="Games">Trò chơi</span></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Setup Modal -->
+  <div class="ai-setup-modal" id="aiSetupModal">
+    <div class="ai-modal-content">
+      <button class="ai-modal-close" id="btnCloseAiModal"><i class="fa-solid fa-times"></i></button>
+      <h2 class="ai-modal-title" data-vi="🤖 Chơi với Máy" data-en="🤖 Play vs AI">🤖 Chơi với Máy</h2>
+      
+      <div class="setup-section">
+        <span class="setup-label" data-vi="Chọn quân của bạn:" data-en="Choose your side:">Chọn quân của bạn:</span>
+        <div class="side-grid">
+          <button class="side-btn red selected" data-side="r">
+            <span class="side-icon">帥</span>
+            <span class="side-name" data-vi="Quân Đỏ" data-en="Red Side">Quân Đỏ</span>
+            <span class="side-desc" data-vi="(đi trước)" data-en="(goes first)">(đi trước)</span>
+          </button>
+          <button class="side-btn black" data-side="b">
+            <span class="side-icon">将</span>
+            <span class="side-name" data-vi="Quân Đen" data-en="Black Side">Quân Đen</span>
+            <span class="side-desc" data-vi="(đi sau)" data-en="(goes second)">(đi sau)</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="setup-section">
+        <span class="setup-label" data-vi="Chọn độ khó:" data-en="Choose difficulty:">Chọn độ khó:</span>
+        <div class="difficulty-grid">
+          <button class="difficulty-btn" data-difficulty="easy">
+            <span class="diff-icon">😊</span>
+            <span class="diff-name" data-vi="Dễ" data-en="Easy">Dễ</span>
+          </button>
+          <button class="difficulty-btn selected" data-difficulty="medium">
+            <span class="diff-icon">😐</span>
+            <span class="diff-name" data-vi="Trung bình" data-en="Medium">Trung bình</span>
+          </button>
+          <button class="difficulty-btn" data-difficulty="hard">
+            <span class="diff-icon">😠</span>
+            <span class="diff-name" data-vi="Khó" data-en="Hard">Khó</span>
+          </button>
+        </div>
+      </div>
+
+      <button class="game-btn btn-primary" id="btnStartAi" style="width:100%;">
+        <i class="fa-solid fa-play"></i>
+        <span data-vi="Bắt đầu" data-en="Start Game">Bắt đầu</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Rules Modal -->
+  <div class="game-modal-overlay" id="rulesModal">
+    <div class="game-modal-content">
+      <button class="game-modal-close" onclick="document.getElementById('rulesModal').classList.remove('active')"><i class="fa-solid fa-times"></i></button>
+      <h2 class="game-modal-title" data-vi="Luật Cờ Tướng" data-en="Xiangqi Rules">Luật Cờ Tướng</h2>
+      <div class="game-rules-list">
+        <ul>
+          <li data-vi="<b>Tướng/Soái (将/帅):</b> Di chuyển 1 ô ngang/dọc trong cung điện (3×3). Hai tướng không được nhìn thẳng nhau." data-en="<b>King (将/帅):</b> 1 step orthogonal, stays in palace (3×3). Two kings cannot face each other directly."><b>Tướng (将/帅):</b> 1 ô trong cung. Hai tướng không đối mặt trực tiếp.</li>
+          <li data-vi="<b>Sĩ (士/仕):</b> Di chuyển 1 ô chéo trong cung điện." data-en="<b>Advisor (士/仕):</b> 1 diagonal step within the palace."><b>Sĩ (士/仕):</b> 1 ô chéo trong cung.</li>
+          <li data-vi="<b>Tượng/Tướng (象/相):</b> Di chuyển 2 ô chéo. Không qua sông. Bị chặn nếu ô giữa có quân." data-en="<b>Elephant (象/相):</b> 2 diagonal steps. Cannot cross river. Blocked if midpoint is occupied."><b>Tượng (象/相):</b> 2 ô chéo, không qua sông, có thể bị lù chân.</li>
+          <li data-vi="<b>Xe (車):</b> Di chuyển bao nhiêu ô ngang/dọc tùy ý, không nhảy qua quân." data-en="<b>Rook (車):</b> Any number of orthogonal steps, cannot leap."><b>Xe (車):</b> Bất kỳ số ô ngang/dọc.</li>
+          <li data-vi="<b>Pháo (砲/炮):</b> Di chuyển như Xe. Để ăn quân phải nhảy qua đúng 1 quân (bệ pháo)." data-en="<b>Cannon (砲/炮):</b> Moves like Rook. To capture, must jump over exactly 1 piece."><b>Pháo (砲/炮):</b> Di chuyển như Xe nhưng ăn phải nhảy qua 1 quân.</li>
+          <li data-vi="<b>Mã (馬):</b> 1 ô ngang/dọc rồi 1 ô chéo (hình chữ L). Có thể bị lù chân." data-en="<b>Knight (馬):</b> 1 orthogonal + 1 diagonal (L-shape). Can be hobbled."><b>Mã (馬):</b> 1 ngang/dọc + 1 chéo. Có thể bị chặn chân.</li>
+          <li data-vi="<b>Tốt/Binh (卒/兵):</b> Trước sông: 1 ô tiến. Qua sông: 1 ô tiến hoặc ngang. Không đi lùi." data-en="<b>Pawn (卒/兵):</b> Before river: 1 forward. After river: 1 forward or sideways. Never backward."><b>Tốt (卒/兵):</b> Trước sông tiến thẳng. Qua sông thêm ngang. Không lùi.</li>
+          <li data-vi="<b>Chiếu bí:</b> Không còn nước đi hợp lệ → thua." data-en="<b>Checkmate:</b> No legal moves remaining → lose."><b>Chiếu bí:</b> Không còn nước hợp lệ → thua.</li>
+          <li data-vi="<b>Thời gian:</b> Mỗi người 5 phút. Hết giờ → thua." data-en="<b>Timer:</b> 5 minutes per player. Timeout → lose."><b>Thời gian:</b> Mỗi người 5 phút.</li>
+        </ul>
+        <div style="text-align:center;margin-top:1.5rem;">
+          <button class="game-btn btn-primary" onclick="document.getElementById('rulesModal').classList.remove('active')" style="display:inline-block;width:auto;padding:0.8rem 2.5rem;">
+            <i class="fa-solid fa-check"></i> <span data-vi="Đã hiểu" data-en="Got it">Đã hiểu</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer mt-auto">
+    <div class="container">
+      <p>© 2026 <strong>Điền Nguyễn (Iyu)</strong>. <span data-vi="Được xây dựng với" data-en="Built with">Được xây dựng với</span> <i class="fa-solid fa-heart" style="color:#6366f1;"></i></p>
+    </div>
+  </footer>
+
+  <script src="assets/js/shared/preferences/theme.js"></script>
+  <script src="assets/js/shared/preferences/language.js"></script>
+  <script src="assets/js/shared/preferences/boot.js"></script>
+  <script src="assets/js/shared/site/navbar.js"></script>
+  <script src="assets/js/shared/site/mobile-menu.js"></script>
+  <script src="assets/js/shared/site/observers.js"></script>
+  <script src="assets/js/shared/site/effects.js"></script>
+  <script src="assets/js/shared/site/transitions.js"></script>
+  <script src="assets/js/shared/site/boot.js"></script>
+  <script type="module" src="assets/js/games/co-tuong/main.js"></script>
+  <script>
+    (function() {
+      // Escape to close modals
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+          document.getElementById('rulesModal')?.classList.remove('active');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
