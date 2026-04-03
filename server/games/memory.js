@@ -136,6 +136,11 @@ function handleMemoryFlip(room, socket, io, roomCode, { cardIndex }) {
     return;
   }
 
+  const { memoryGame } = room;
+  
+  if (memoryGame.flipped.includes(cardIndex)) return;
+  if (memoryGame.matched.includes(cardIndex)) return;
+
   const flippedEmoji = memoryGame.deck[cardIndex];
   memoryGame.flipped.push(cardIndex);
   
