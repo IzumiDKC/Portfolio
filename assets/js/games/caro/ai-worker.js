@@ -94,68 +94,146 @@ function checkWin(board, row, col, symbol) {
   return false;
 }
 
-// ─── Comprehensive Threat Classifier ─────────────────────────────────────────
-// Scans every line of length 6 and classifies the threat level for `sym`.
+// ─── Fast local threat scanner ───────────────────────────────────────────────
+// Only scans the 4 lines passing through (row,col) instead of entire board.
 // Returns: { five, open4, broken4, open3, broken3 }
-//   five    = 5+ in a row (win)
-//   open4   = _XXXX_ (unstoppable unless blocked at one end)
-//   broken4 = XXXX_ or _XXXX or XX_XX or X_XXX or XXX_X (4 in line, 1 gap/blocked-end)
-//   open3   = _XXX_ (double-open 3)
-//   broken3 = _XX_X_ or similar (3 with one end or gap)
-function classifyThreats(board, sym) {
+function fastThreatsAt(board, row, col, sym) {
   const opp = sym === 'X' ? 'O' : 'X';
   let five = 0, open4 = 0, broken4 = 0, open3 = 0, broken3 = 0;
 
   for (const [dr, dc] of DIRS) {
+    // Extract the line through (row,col) in this direction, up to 9 cells
+    const line = [];
+    const startR = row - dr * 4, startC = col - dc * 4;
+    for (let i = 0; i < 9; i++) {
+      const r = startR + dr * i, c = startC + dc * i;
+      if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE)
+        line.push('W'); // wall
+      else
+        line.push(board[r][c]);
+    }
+
+    // Scan windows of 5 and 6 within this line
+    for (let s = 0; s <= 4; s++) {
+      // Window of 5
+      let symC5 = 0, oppC5 = 0;
+      for (let i = s; i < s + 5; i++) {
+        if (line[i] === sym) symC5++;
+        else if (line[i] !== null) oppC5++; // opp or wall
+      }
+      if (oppC5 === 0) {
+        if (symC5 === 5) five++;
+        else if (symC5 === 4) broken4++;
+        else if (symC5 === 3) broken3++;
+      }
+    }
+
+    for (let s = 0; s <= 3; s++) {
+      // Window of 6
+      let symC6 = 0, oppC6 = 0;
+      for (let i = s; i < s + 6; i++) {
+        if (line[i] === sym) symC6++;
+        else if (line[i] !== null) oppC6++;
+      }
+      if (oppC6 === 0 && line[s] === null && line[s + 5] === null) {
+        let innerSym = 0;
+        for (let i = s + 1; i < s + 5; i++)
+          if (line[i] === sym) innerSym++;
+        if (innerSym === 4) open4++;
+        else if (innerSym === 3) open3++;
+      }
+    }
+  }
+  return { five, open4, broken4, open3, broken3 };
+}
+
+// ─── Full board threat classifier (uses fast local scan) ─────────────────────
+function classifyThreats(board, sym) {
+  let five = 0, open4 = 0, broken4 = 0, open3 = 0, broken3 = 0;
+  const opp = sym === 'X' ? 'O' : 'X';
+  const visited = new Set();
+
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (board[r][c] !== sym) continue;
+
+      for (const [dr, dc] of DIRS) {
+        // Normalize line start to avoid double-counting
+        let sr = r, sc = c;
+        while (sr - dr >= 0 && sr - dr < BOARD_SIZE &&
+               sc - dc >= 0 && sc - dc < BOARD_SIZE &&
+               board[sr - dr][sc - dc] === sym) {
+          sr -= dr; sc -= dc;
+        }
+        const key = `${sr},${sc},${dr},${dc}`;
+        if (visited.has(key)) continue;
+        visited.add(key);
+
+        // Count consecutive
+        let count = 0, er = sr, ec = sc;
+        while (er >= 0 && er < BOARD_SIZE && ec >= 0 && ec < BOARD_SIZE && board[er][ec] === sym) {
+          count++; er += dr; ec += dc;
+        }
+        if (count >= 5) { five++; continue; }
+
+        // Check ends
+        const beforeR = sr - dr, beforeC = sc - dc;
+        const afterR = er, afterC = ec;
+        const beforeOpen = beforeR >= 0 && beforeR < BOARD_SIZE && beforeC >= 0 && beforeC < BOARD_SIZE && board[beforeR][beforeC] === null;
+        const afterOpen = afterR >= 0 && afterR < BOARD_SIZE && afterC >= 0 && afterC < BOARD_SIZE && board[afterR][afterC] === null;
+
+        if (count === 4) {
+          if (beforeOpen && afterOpen) open4++;
+          else if (beforeOpen || afterOpen) broken4++;
+        } else if (count === 3) {
+          if (beforeOpen && afterOpen) open3++;
+          else if (beforeOpen || afterOpen) broken3++;
+        }
+      }
+    }
+  }
+  // Also check gapped patterns (X_XXX, XX_XX, etc.) for broken4
+  for (const [dr, dc] of DIRS) {
     for (let r = 0; r < BOARD_SIZE; r++) {
       for (let c = 0; c < BOARD_SIZE; c++) {
-
-        // Scan window of 6 for open-ended threats
-        const w6 = [];
-        let ok6 = true;
-        for (let i = 0; i < 6; i++) {
-          const nr = r + dr * i, nc = c + dc * i;
-          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) { ok6 = false; break; }
-          w6.push(board[nr][nc]);
-        }
-        if (ok6) {
-          const symC = w6.filter(v => v === sym).length;
-          const oppC = w6.filter(v => v === opp).length;
-          if (oppC === 0) {
-            const empC = w6.filter(v => v === null).length;
-            // Open patterns: both ends of the 6-window are empty
-            const leftOpen  = w6[0] === null;
-            const rightOpen = w6[5] === null;
-            if (leftOpen && rightOpen) {
-              const inner = w6.slice(1, 5);
-              const innerSym = inner.filter(v => v === sym).length;
-              const innerEmp = inner.filter(v => v === null).length;
-              if (innerSym === 4 && innerEmp === 0) open4++;       // _XXXX_
-              else if (innerSym === 3 && innerEmp === 1) open3++;   // _X_XX_ etc
-            }
-          }
-        }
-
-        // Scan window of 5 for broken threats
         const w5 = [];
-        let ok5 = true;
+        let ok = true;
         for (let i = 0; i < 5; i++) {
           const nr = r + dr * i, nc = c + dc * i;
-          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) { ok5 = false; break; }
+          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) { ok = false; break; }
           w5.push(board[nr][nc]);
         }
-        if (ok5) {
-          const symC5 = w5.filter(v => v === sym).length;
-          const oppC5 = w5.filter(v => v === opp).length;
-          if (oppC5 > 0) continue;
-          if (symC5 === 5) five++;
-          else if (symC5 === 4) broken4++;  // XXXX_ or _XXXX or XX_XX etc
-          else if (symC5 === 3) broken3++;
+        if (!ok) continue;
+        let sc5 = 0, oc5 = 0, gaps = 0;
+        for (const v of w5) {
+          if (v === sym) sc5++;
+          else if (v === null) gaps++;
+          else oc5++;
+        }
+        // Gapped 4: exactly 4 of sym + 1 gap + 0 opp, and NOT consecutive (already counted)
+        if (sc5 === 4 && gaps === 1 && oc5 === 0) {
+          // Check it's actually gapped (not consecutive with an end space)
+          const pat = w5.map(v => v === sym ? 'X' : '_').join('');
+          if (pat !== 'XXXX_' && pat !== '_XXXX') {
+            broken4++;
+          }
         }
       }
     }
   }
   return { five, open4, broken4, open3, broken3 };
+}
+
+// ─── Move creates fork? ─────────────────────────────────────────────────────
+function moveCreatesFork(board, row, col, sym) {
+  board[row][col] = sym;
+  const t = fastThreatsAt(board, row, col, sym);
+  board[row][col] = null;
+  // Fork = multiple simultaneous threats that can't all be blocked
+  return (t.open4 >= 1) ||
+         (t.broken4 >= 2) ||
+         (t.open3 >= 2) ||
+         (t.broken4 >= 1 && t.open3 >= 1);
 }
 
 // ─── Window-of-5 evaluation (used inside minimax) ────────────────────────────
@@ -211,13 +289,29 @@ function getCandidates(board, aiSym, humanSym, maxCount = 15) {
     }
   if (!hasAny) { const ct=Math.floor(BOARD_SIZE/2); return [{row:ct,col:ct}]; }
 
-  // Score: heavily weight defensive value (human score × 2.5 instead of 1.5)
+  // Fast proximity-based scoring (no evaluateBoard calls)
   const scored = [...seen].map(key => {
     const row=Math.floor(key/BOARD_SIZE), col=key%BOARD_SIZE;
-    board[row][col]=aiSym;  const aiScore=evaluateBoard(board,aiSym);
-    board[row][col]=humanSym; const humScore=evaluateBoard(board,humanSym);
-    board[row][col]=null;
-    return { row, col, score: aiScore + humScore * 2.5 };
+    let score = 0;
+    // Check all 4 directions for line potential
+    for (const [dr, dc] of DIRS) {
+      let aiCount = 0, humCount = 0, aiConsec = 0, humConsec = 0;
+      for (let d = -4; d <= 4; d++) {
+        if (d === 0) continue;
+        const r = row + dr * d, c = col + dc * d;
+        if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) continue;
+        const v = board[r][c];
+        if (v === aiSym) { aiCount++; if (Math.abs(d) <= 2) aiConsec++; }
+        else if (v === humanSym) { humCount++; if (Math.abs(d) <= 2) humConsec++; }
+      }
+      // Offensive + defensive value
+      score += aiConsec * aiConsec * 100 + aiCount * 20;
+      score += humConsec * humConsec * 150 + humCount * 30; // Defensive slightly higher
+    }
+    // Center bonus
+    const distCenter = Math.abs(row - BOARD_SIZE/2) + Math.abs(col - BOARD_SIZE/2);
+    score += Math.max(0, 20 - distCenter) * 5;
+    return { row, col, score };
   });
   scored.sort((a,b)=>b.score-a.score);
   return scored.slice(0, maxCount);
@@ -232,7 +326,7 @@ function minimax(board, depth, alpha, beta, isMaximizing, aiSym, humanSym, lastM
     const humS = evaluateBoard(board, humanSym);
     return aiS - humS * 2.5;  // Very strong defensive weighting
   }
-  const candidates = getCandidates(board, aiSym, humanSym, 8);
+  const candidates = getCandidates(board, aiSym, humanSym, 6);
   if (candidates.length === 0) return 0;
   if (isMaximizing) {
     let best = -Infinity;
@@ -265,13 +359,13 @@ function findBestBlock(board, sym, candidates) {
   let best = null, bestScore = -Infinity;
   for (const {row, col} of candidates) {
     board[row][col] = opp;  // AI blocks here
-    const tAfter = classifyThreats(board, sym);
+    const tAfter = fastThreatsAt(board, row, col, sym);
     board[row][col] = null;
     // Score: how much does placing AI here reduce human threats?
     const s = -(tAfter.open4 * 100000 + tAfter.broken4 * 10000 + tAfter.open3 * 1000 + tAfter.broken3 * 100);
     // Bonus: does this move also create AI threats?
     board[row][col] = opp;
-    const aiT = classifyThreats(board, opp);
+    const aiT = fastThreatsAt(board, row, col, opp);
     board[row][col] = null;
     const bonus = aiT.broken4 * 5000 + aiT.open3 * 500;
     if (s + bonus > bestScore) { bestScore = s + bonus; best = {row, col}; }
@@ -304,9 +398,10 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
     let best = null, bS = -Infinity;
     for (const {row,col} of candidates) {
       board[row][col] = aiSym;
-      const after = classifyThreats(board, humanSym);
+      const after = fastThreatsAt(board, row, col, humanSym);
       board[row][col] = null;
-      const s = (hT.open4 - after.open4) * 500000 + (hT.broken4 - after.broken4) * 50000;
+      // If placing here removes human threats on lines through this cell
+      const s = -after.open4 * 500000 - after.broken4 * 50000;
       if (s > bS) { bS = s; best = {row,col}; }
     }
     if (best) return best;
@@ -315,7 +410,7 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
   // ── Priority 4: AI creates open-4 or broken-4 ─────────────────────────────
   for (const {row,col} of candidates) {
     board[row][col] = aiSym;
-    const t = classifyThreats(board, aiSym);
+    const t = fastThreatsAt(board, row, col, aiSym);
     board[row][col] = null;
     if (t.open4 >= 1 || t.broken4 >= 2) return {row,col};
   }
@@ -324,17 +419,17 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
   if (hT.broken4 >= 1) {
     for (const {row,col} of candidates) {
       board[row][col] = aiSym;
-      const after = classifyThreats(board, humanSym);
+      const after = fastThreatsAt(board, row, col, humanSym);
       board[row][col] = null;
-      // Must reduce broken4 count
-      if (after.broken4 < hT.broken4 || after.open4 < hT.open4) return {row,col};
+      // If this cell blocks a broken4 line
+      if (after.broken4 === 0) return {row,col};
     }
   }
 
   // ── Priority 6: AI creates a single broken-4 (XXXX_) ─────────────────────
   for (const {row,col} of candidates) {
     board[row][col] = aiSym;
-    const t = classifyThreats(board, aiSym);
+    const t = fastThreatsAt(board, row, col, aiSym);
     board[row][col] = null;
     if (t.broken4 >= 1) {
       // Check it doesn't leave human a fork or worse
@@ -348,7 +443,7 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
     // If AI can create a broken4 while blocking, do that; otherwise block directly
     for (const {row,col} of humanForkMoves) {
       board[row][col] = aiSym;
-      const aiAfter = classifyThreats(board, aiSym);
+      const aiAfter = fastThreatsAt(board, row, col, aiSym);
       board[row][col] = null;
       if (aiAfter.broken4 >= 1) return {row,col};
     }
