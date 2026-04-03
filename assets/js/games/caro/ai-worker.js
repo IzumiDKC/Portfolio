@@ -511,7 +511,9 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
   }
 
   // ── Priority 6: Block human fork (≥2 simultaneous threats) ────────────────
-  const humanForkMoves = candidates.filter(({row,col}) => moveCreatesFork(board, row, col, humanSym));
+  // Use expanded candidates for defensive scanning to avoid missing threats
+  const defenseCandidates = getCandidates(board, aiSym, humanSym, 35);
+  const humanForkMoves = defenseCandidates.filter(({row,col}) => moveCreatesFork(board, row, col, humanSym));
   if (humanForkMoves.length > 0) {
     // Try to create AI broken-4 while blocking the fork
     for (const {row,col} of humanForkMoves) {
@@ -522,6 +524,32 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
     }
     // Otherwise pick the blocking move that reduces the most human threats
     return findBestBlock(board, humanSym, humanForkMoves) || humanForkMoves[0];
+  }
+
+  // ── Priority 6.5: Block human moves that create broken-4 next turn ────────
+  // Proactively block positions where human would get a broken-4
+  const humanBroken4Moves = [];
+  for (const {row,col} of defenseCandidates) {
+    board[row][col] = humanSym;
+    const t = fastThreatsAt(board, row, col, humanSym);
+    board[row][col] = null;
+    if (t.broken4 >= 1 || t.open4 >= 1) {
+      humanBroken4Moves.push({row, col, urgency: (t.open4 || 0) * 100 + (t.broken4 || 0) * 10});
+    }
+  }
+  if (humanBroken4Moves.length > 0) {
+    // Sort by urgency (open4 > broken4)
+    humanBroken4Moves.sort((a, b) => b.urgency - a.urgency);
+    // Pick the block that also creates best AI threat
+    let best = humanBroken4Moves[0], bestB = -1;
+    for (const {row,col} of humanBroken4Moves) {
+      board[row][col] = aiSym;
+      const aiT = fastThreatsAt(board, row, col, aiSym);
+      board[row][col] = null;
+      const b = aiT.broken4 * 5000 + aiT.open3 * 500 + aiT.broken3 * 50;
+      if (b > bestB) { bestB = b; best = {row,col}; }
+    }
+    return best;
   }
 
   // ── Priority 7: AI creates a fork ─────────────────────────────────────────
