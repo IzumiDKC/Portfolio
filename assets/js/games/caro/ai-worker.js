@@ -257,16 +257,6 @@ function minimax(board, depth, alpha, beta, isMaximizing, aiSym, humanSym, lastM
   }
 }
 
-// ─── Check if a move creates a fork (≥2 threats) ─────────────────────────────
-function moveCreatesFork(board, row, col, sym) {
-  board[row][col] = sym;
-  const t = classifyThreats(board, sym);
-  board[row][col] = null;
-  // Fork = 2+ broken4, OR broken4+open3, OR 2+ open3
-  const threats = t.broken4 + t.open4 * 2;
-  return threats >= 2 || (t.broken4 >= 1 && t.open3 >= 1) || t.open3 >= 2;
-}
-
 // ─── Find best blocking move against a fork ───────────────────────────────────
 function findBestBlock(board, sym, candidates) {
   // Among candidates, find the one that MOST reduces opponent threats
@@ -372,41 +362,35 @@ function computeHardMove(board, aiSym, humanSym, candidates, humanMoves) {
     return aiForkMoves[0];
   }
 
-  // ── Priority 9: Block human open-3 threats aggressively ──────────────────
+  // ── Priority 9: Block human open-3 threats aggressively ─────────────────
   if (hT.open3 >= 1) {
     let best = null, bS = -Infinity;
     for (const {row,col} of candidates) {
       board[row][col] = aiSym;
-      const hAfter = classifyThreats(board, humanSym);
-      const aiAfter = classifyThreats(board, aiSym);
+      // Use fast scanner instead of full classifyThreats
+      const hAfter = fastThreatsAt(board, row, col, humanSym);
+      const aiAfter = fastThreatsAt(board, row, col, aiSym);
       board[row][col] = null;
-      const s = (hT.open3 - hAfter.open3) * 5000
-              + (hT.broken4 - hAfter.broken4) * 15000
-              + aiAfter.broken4 * 3000
-              + aiAfter.open3 * 800;
+      const s = -hAfter.open3 * 5000 - hAfter.broken4 * 15000
+              + aiAfter.broken4 * 3000 + aiAfter.open3 * 800;
       if (s > bS) { bS = s; best = {row,col}; }
     }
-    if (best && bS > 0) return best;
+    if (best) return best;
   }
 
-  // ── Priority 10: ML-boosted minimax (adaptive depth) ────────────────────
+  // ── Priority 10: ML-boosted minimax ─────────────────────────────────────
   const w = ml.mlWeight;
-  // Count pieces to determine depth: fewer pieces = shallower (less branching penalty)
-  let pieceCount = 0;
-  for (let r = 0; r < BOARD_SIZE; r++) for (let c = 0; c < BOARD_SIZE; c++) if (board[r][c]) pieceCount++;
-  const depth = pieceCount < 4 ? 3 : pieceCount < 12 ? 4 : 4; // depth-3 early, depth-4 otherwise
-  const pool = candidates.slice(0, 7); // tighter pool keeps time under 500ms
+  const pool = candidates.slice(0, 5); // small pool, depth-3 is fast + strong
 
   const scored = pool.map(({row, col}) => {
     board[row][col] = aiSym;
-    const mmScore = minimax(board, depth, -Infinity, Infinity, false, aiSym, humanSym, {row,col});
+    const mmScore = minimax(board, 3, -Infinity, Infinity, false, aiSym, humanSym, {row,col});
     board[row][col] = null;
     const mlBias = w > 0 ? ml.getBias(board, row, col, aiSym) * w * 100_000 : 0;
     return { row, col, total: mmScore + mlBias };
   });
   scored.sort((a, b) => b.total - a.total);
 
-  // Adaptive disruption: randomize top-2 if this opening was exploited before
   if (ml.isExploitedOpening(humanMoves) && scored.length >= 2) {
     const topK = scored.slice(0, 2);
     return topK[Math.floor(Math.random() * topK.length)];

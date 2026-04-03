@@ -99,6 +99,8 @@ export function createCaroAiGame({ state, elements, ui }) {
   }
 
   // ── Probe animation: flash ghost cells to simulate AI "trying" moves ──────
+  // Loops continuously (at ~400 ms/step) until stopProbeAnimation() is called,
+  // so the animation always covers the full worker computation time.
   let probeTimer = null;
   let probeStep  = 0;
 
@@ -106,7 +108,24 @@ export function createCaroAiGame({ state, elements, ui }) {
     stopProbeAnimation();
     probeStep = 0;
     const BOARD_SIZE = state.board.length;
-    const totalSteps = 6 + Math.floor(Math.random() * 5); // 6–10 fake probes
+
+    function buildCandidates() {
+      const cells = [];
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          if (state.board[r][c] !== null) continue;
+          outer: for (let dr = -3; dr <= 3; dr++) {
+            for (let dc = -3; dc <= 3; dc++) {
+              const nr = r + dr, nc = c + dc;
+              if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && state.board[nr][nc] !== null) {
+                cells.push(r * BOARD_SIZE + c); break outer;
+              }
+            }
+          }
+        }
+      }
+      return cells;
+    }
 
     probeTimer = setInterval(() => {
       // Clear previous probe cell
@@ -114,41 +133,19 @@ export function createCaroAiGame({ state, elements, ui }) {
       if (prev) prev.classList.remove('ai-probe');
 
       probeStep++;
-      if (probeStep > totalSteps) {
-        stopProbeAnimation();
-        return;
-      }
-
-      // Pick a random empty cell near existing pieces
-      const emptyCells = [];
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        for (let c = 0; c < BOARD_SIZE; c++) {
-          if (state.board[r][c] === null) {
-            // Only cells near existing pieces (within ±3)
-            let hasNeighbor = false;
-            outer: for (let dr = -3; dr <= 3; dr++) {
-              for (let dc = -3; dc <= 3; dc++) {
-                const nr = r + dr, nc = c + dc;
-                if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && state.board[nr][nc] !== null) {
-                  hasNeighbor = true; break outer;
-                }
-              }
-            }
-            if (hasNeighbor) emptyCells.push(r * BOARD_SIZE + c);
-          }
-        }
-      }
-
-      if (emptyCells.length > 0) {
-        const idx = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+      const candidates = buildCandidates();
+      if (candidates.length > 0) {
+        const idx = candidates[Math.floor(Math.random() * candidates.length)];
         const cell = elements.caroBoard.children[idx];
         if (cell && !cell.classList.contains('cell-x') && !cell.classList.contains('cell-o')) {
           cell.classList.add('ai-probe');
         }
       }
 
-      ui.updateThinkingStatus(probeStep, totalSteps);
-    }, 120);
+      // Loop display: cycle through 1..12 indefinitely
+      const displayStep = ((probeStep - 1) % 12) + 1;
+      ui.updateThinkingStatus(displayStep, 12);
+    }, 400);
   }
 
   function stopProbeAnimation() {
@@ -169,12 +166,15 @@ export function createCaroAiGame({ state, elements, ui }) {
 
   // ── Place piece → check win/draw → trigger learning on game end ───────────
   function placeMove(row, col, symbol, playerName) {
-    ui.updateCellUI(row, col, symbol);
+    // Hard mode: AI move skips last-move highlight (harder to track)
+    const isAiMove = symbol === state.aiSymbol;
+    const skipLastMove = state.difficulty === 'hard' && isAiMove;
+    ui.updateCellUI(row, col, symbol, false, skipLastMove);
     ui.addLog(playerName, symbol, row, col);
 
     if (checkWin(state.board, row, col, symbol)) {
       state.isGameOver = true;
-      ui.updateCellUI(row, col, symbol, true);
+      ui.updateCellUI(row, col, symbol, true, false);
       const isPlayerWin = symbol === state.playerSymbol;
 
       // Trigger ML: 'win' = AI won, 'lose' = human won
