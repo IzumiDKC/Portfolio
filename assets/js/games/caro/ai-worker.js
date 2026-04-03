@@ -436,8 +436,15 @@ self.onmessage = function({ data }) {
     const pick = choices[Math.floor(Math.random() * choices.length)] || { row: pr, col: pc+1 };
     self.postMessage(pick); return;
   }
+  // With ≤5 pieces, no real 3-in-a-row threats exist → skip classifyThreats/minimax
+  // getCandidates already scores by (aiEval + humanEval×2.5), top-1 is safe & instant
+  if (piecesOnBoard <= 5) {
+    const earlyCands = getCandidates(board, aiSymbol, humanSymbol, 10);
+    self.postMessage(earlyCands[0]); return;
+  }
 
   const candidates  = getCandidates(board, aiSymbol, humanSymbol, 20);
+
 
   // EASY ──────────────────────────────────────────────────────────────────────
   if (difficulty === 'easy') {
