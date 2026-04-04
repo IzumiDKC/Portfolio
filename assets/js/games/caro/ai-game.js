@@ -17,7 +17,13 @@ export function createCaroAiGame({ state, elements, ui }) {
       worker.postMessage({ type: 'init', mlData });
       // Route all worker messages through a shared handler
       worker.onmessage = handleWorkerMessage;
-      worker.onerror   = (e) => console.error('[AI Worker]', e);
+      worker.onerror   = (e) => {
+        console.error('[AI Worker]', e);
+        stopProbeAnimation();
+        state.isPlayerTurn = true;
+        ui.updateAiTurnUI(true, state.playerSymbol, state.difficulty);
+        ui.prependSystemLog(ui.getLang() === 'en' ? 'AI error. Please try again.' : 'AI b? l?i. H?y th? l?i.');
+      };
     }
     return worker;
   }
@@ -92,9 +98,12 @@ export function createCaroAiGame({ state, elements, ui }) {
       humanMoves: state.humanMoveList
     });
 
-    // Hard mode: animate ghost probes while worker is computing
-    if (state.difficulty === 'hard') {
+    // Hard mode: skip the long opening animation for the first few pieces.
+    const piecesOnBoard = boardSnapshot.flat().filter(v => v !== null).length;
+    if (state.difficulty === 'hard' && piecesOnBoard > 3) {
       startProbeAnimation();
+    } else {
+      stopProbeAnimation();
     }
   }
 
@@ -208,3 +217,5 @@ export function createCaroAiGame({ state, elements, ui }) {
 
   return { startGame, restart };
 }
+
+

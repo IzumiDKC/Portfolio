@@ -1,11 +1,14 @@
 // ml-storage.js – Persistence layer for Caro ML data via localStorage
 
-const ML_KEY = 'caro_ml_data';
+const ML_STORAGE_VERSION = 2;
+const ML_KEY = `caro_ml_data_v${ML_STORAGE_VERSION}`;
 
 export function loadMLData() {
   try {
     const raw = localStorage.getItem(ML_KEY);
-    return raw ? JSON.parse(raw) : {};
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
   } catch (e) {
     console.warn('[ML] Failed to load ML data:', e);
     return {};
@@ -29,3 +32,5 @@ export function saveMLData(data) {
 export function getGamesPlayed() {
   return loadMLData().gamesPlayed || 0;
 }
+
+export { ML_STORAGE_VERSION };
